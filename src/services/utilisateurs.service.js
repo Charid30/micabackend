@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../models');
 
 const MODULES = [
-  'stocks', 'corridors', 'depots-int', 'temps-attente',
+  'stocks', 'impompable', 'corridors', 'depots-int', 'temps-attente',
   'veille-marche', 'veille-geo', 'achats-traders', 'ventes',
   'rapports', 'administration', 'parametres',
 ];
