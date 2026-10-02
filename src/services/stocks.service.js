@@ -1,12 +1,19 @@
-const { RapportHebdo, StockDepot, ConsommationJournaliere, Depot, Produit, ParametreAlerte } = require('../models');
+const { RapportHebdo, StockDepot, ConsommationJournaliere, Depot, Produit, ParametreAlerte, Utilisateur, Permission } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
 
 // ── GET : données de saisie structurées
 const getSaisieData = async (userId) => {
   const rapport = await getOrCreateRapportSemaine(userId);
 
+  // Restriction dépôt : si l'utilisateur a une permission stocks avec depot_id, on filtre
+  const userPerms = await Permission.findAll({ where: { utilisateur_id: userId, module: 'stocks' } });
+  const depotRestriction = userPerms.find(p => p.depot_id)?.depot_id || null;
+
   const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'FO', 'GAZ'];
-  const depots      = await Depot.findAll({ where: { del: 0 }, order: [['type', 'DESC'], ['libelle', 'ASC']] });
+  const depotWhere = depotRestriction
+    ? { del: 0, id: depotRestriction }
+    : { del: 0 };
+  const depots = await Depot.findAll({ where: depotWhere, order: [['type', 'DESC'], ['libelle', 'ASC']] });
   const produitsRaw = await Produit.findAll({ where: { del: 0 } });
   const produits    = produitsRaw.sort((a, b) => {
     const ia = PRODUIT_ORDER.indexOf(a.code);

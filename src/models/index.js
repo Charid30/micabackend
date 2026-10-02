@@ -58,6 +58,7 @@ const Permission = sequelize.define('Permission', {
   utilisateur_id: { type: DataTypes.INTEGER, allowNull: false },
   module: { type: DataTypes.STRING(50), allowNull: false },
   action: { type: DataTypes.STRING(30), allowNull: false },
+  depot_id: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
   ...auditFields,
 }, { tableName: 'permissions', timestamps: false });
 

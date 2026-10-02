@@ -114,7 +114,6 @@ const getPermissions = async (userId) => {
 };
 
 const savePermissions = async (utilisateurId, permissionsData, userId) => {
-  // Hard delete — les permissions sont entièrement recréées à chaque sauvegarde
   await Permission.destroy({ where: { utilisateur_id: utilisateurId } });
 
   const toInsert = permissionsData.filter(p => p.action && p.action !== 'NONE');
@@ -124,6 +123,7 @@ const savePermissions = async (utilisateurId, permissionsData, userId) => {
         utilisateur_id: utilisateurId,
         module: p.module,
         action: p.action,
+        depot_id: p.depot_id || null,
         created_by: userId, updated_by: userId,
       }))
     );
