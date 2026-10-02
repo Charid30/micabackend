@@ -1,0 +1,28 @@
+const express = require('express');
+const router = express.Router();
+const { authenticate } = require('../middleware/auth');
+
+router.use('/auth', require('./auth.routes'));
+router.use('/utilisateurs', authenticate, require('./utilisateurs.routes'));
+router.use('/agents', authenticate, require('./agents.routes'));
+router.use('/directions', authenticate, require('./directions.routes'));
+router.use('/entreprises', authenticate, require('./entreprises.routes'));
+router.use('/produits', authenticate, require('./produits.routes'));
+router.use('/depots', authenticate, require('./depots.routes'));
+router.use('/corridors', authenticate, require('./corridors.routes'));
+router.use('/fournisseurs', authenticate, require('./fournisseurs.routes'));
+router.use('/marketeurs', authenticate, require('./marketeurs.routes'));
+router.use('/rapports', authenticate, require('./rapports.routes'));
+router.use('/stocks', authenticate, require('./stocks.routes'));
+router.use('/chargements', authenticate, require('./chargements.routes'));
+router.use('/encours', authenticate, require('./encours.routes'));
+router.use('/ventes', authenticate, require('./ventes.routes'));
+router.use('/finances', authenticate, require('./finances.routes'));
+router.use('/camions', authenticate, require('./camions.routes'));
+router.use('/veille-marche', authenticate, require('./veilleMarche.routes'));
+router.use('/veille-geo', authenticate, require('./veilleGeo.routes'));
+router.use('/achats-traders', authenticate, require('./achatsTraders.routes'));
+router.use('/parametres', authenticate, require('./parametres.routes'));
+router.use('/dashboard', authenticate, require('./dashboard.routes'));
+
+module.exports = router;

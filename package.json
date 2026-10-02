@@ -1,0 +1,36 @@
+{
+  "name": "mica-backend",
+  "version": "1.0.0",
+  "description": "Backend API SONABHY/MICA - Gestion des stocks d'hydrocarbures",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "migrate": "node src/database/migrate.js",
+    "migrations": "node src/database/migrate.js",
+    "seed": "node src/database/seeders/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
+    "express-validator": "^7.1.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.10.1",
+    "node-cron": "^3.0.3",
+    "puppeteer": "^22.12.1",
+    "sequelize": "^6.37.3",
+    "uuid": "^10.0.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "allowScripts": {
+    "puppeteer@22.15.0": true
+  }
+}
