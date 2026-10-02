@@ -1,6 +1,6 @@
 const { RapportHebdo, AchatTrader, Produit, Fournisseur, sequelize } = require('../models');
 
-const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'GAZ', 'FO'];
+const PRODUIT_ORDER = ['SUPER91', 'PETROLE', 'GASOIL', 'DDO', 'JET_A1', 'GAZ', 'FUEL_OIL'];
 
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
 

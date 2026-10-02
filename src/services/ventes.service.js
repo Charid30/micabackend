@@ -1,7 +1,7 @@
 const { RapportHebdo, VenteMarketeur, Marketeur, Produit } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
 
-const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'GAZ', 'FO'];
+const PRODUIT_ORDER = ['SUPER91', 'PETROLE', 'GASOIL', 'DDO', 'JET_A1', 'GAZ', 'FUEL_OIL'];
 
 const getSaisieData = async (userId) => {
   const rapport = await getOrCreateRapportSemaine(userId);
