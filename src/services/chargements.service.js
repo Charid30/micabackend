@@ -3,7 +3,7 @@ const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
 
 const getSaisieData = async (userId) => {
   const rapport  = await getOrCreateRapportSemaine(userId);
-  const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'FO', 'GAZ'];
+  const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'GAZ', 'FO'];
   const corridors = await Corridor.findAll({ where: { del: 0 }, order: [['id', 'ASC']] });
   const produitsRaw = await Produit.findAll({ where: { del: 0 } });
   const produits = produitsRaw.sort((a, b) => {

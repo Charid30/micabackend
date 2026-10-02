@@ -9,7 +9,7 @@ const getSaisieData = async (userId) => {
   const userPerms = await Permission.findAll({ where: { utilisateur_id: userId, module: 'stocks' } });
   const depotRestriction = userPerms.find(p => p.depot_id)?.depot_id || null;
 
-  const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'FO', 'GAZ'];
+  const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'GAZ', 'FO'];
   const depotWhere = depotRestriction
     ? { del: 0, id: depotRestriction }
     : { del: 0 };

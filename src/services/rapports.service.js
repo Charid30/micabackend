@@ -1,6 +1,6 @@
 const { RapportHebdo, StockDepot, ConsommationJournaliere, VenteMarketeur, FinanceDette, Produit, Depot, Marketeur } = require('../models');
 
-const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'FO', 'GAZ'];
+const PRODUIT_ORDER = ['SP', 'PL', 'GO', 'DDO', 'JA1', 'GAZ', 'FO'];
 const PRODUIT_LIBELLE = { SP: 'Essence', PL: 'Pétrole', GO: 'Gasoil', DDO: 'DDO', JA1: 'Jet A1', FO: 'Fuel', GAZ: 'Gaz' };
 
 const getListe = async () => {
