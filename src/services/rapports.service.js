@@ -1,4 +1,5 @@
-const { RapportHebdo, StockDepot, ConsommationJournaliere, VenteMarketeur, FinanceDette, Produit, Depot, Marketeur } = require('../models');
+const { RapportHebdo, StockDepot, ConsommationJournaliere, VenteMarketeur, FinanceDette, Produit, Depot, Marketeur, sequelize } = require('../models');
+const { Op } = require('sequelize');
 
 const PRODUIT_ORDER = ['SUPER91', 'PETROLE', 'GASOIL', 'DDO', 'JET_A1', 'GAZ', 'FUEL_OIL'];
 const PRODUIT_LIBELLE = { SP: 'Essence', PL: 'Pétrole', GO: 'Gasoil', DDO: 'DDO', JA1: 'Jet A1', FO: 'Fuel', GAZ: 'Gaz' };
@@ -16,9 +17,34 @@ const getApercu = async (rapportId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw new Error('Rapport introuvable.');
 
-  const [stocks, consos, ventes, dettes, produitsRaw, marketeurs, depotsAll] = await Promise.all([
-    StockDepot.findAll({ where: { rapport_id: rapportId, del: 0 } }),
+  // Pour le rapport : stock_disponible du jeudi (date_fin) + impompable de référence (NULL)
+  // Compatibilité anciens rapports : si aucune ligne datée, on utilise les lignes NULL (ancien comportement)
+  const thursdayDate = rapport.date_fin;
+  const allStocksRaw = await StockDepot.findAll({
+    where: {
+      rapport_id: rapportId,
+      del: 0,
+      [Op.or]: [{ date_saisie: thursdayDate }, { date_saisie: null }],
+    },
+  });
+  const mergedMap = {};
+  for (const s of allStocksRaw) {
+    const key = `${s.depot_id}_${s.produit_id}`;
+    if (!mergedMap[key]) mergedMap[key] = { depot_id: s.depot_id, produit_id: s.produit_id, stock_disponible: 0, stock_impompable: 0, hasDated: false };
+    const m = mergedMap[key];
+    if (s.date_saisie !== null) {
+      m.stock_disponible = parseFloat(s.stock_disponible) || 0;
+      m.hasDated = true;
+    } else {
+      m.stock_impompable = parseFloat(s.stock_impompable) || 0;
+      if (!m.hasDated) m.stock_disponible = parseFloat(s.stock_disponible) || 0;
+    }
+  }
+  const mergedStocks = Object.values(mergedMap);
+
+  const [consos, ventes, dettes, produitsRaw, marketeurs, depotsAll] = await Promise.all([
     ConsommationJournaliere.findAll({ where: { rapport_id: rapportId, del: 0 } }),
+
     VenteMarketeur.findAll({
       where: { rapport_id: rapportId, del: 0 },
       include: [
@@ -56,7 +82,7 @@ const getApercu = async (rapportId) => {
   const interByProduit = {}; // { code: { libelle, unite, depots: [{depotCode, dispo, imp, conso}] } }
   const exterMap = {};       // { code: { libelle, unite, netStock, conso } }
 
-  for (const s of stocks) {
+  for (const s of mergedStocks) {
     const prod = produitMap[s.produit_id];
     const type = depotTypeMap[s.depot_id];
     if (!prod || !type) continue;

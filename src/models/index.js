@@ -124,6 +124,7 @@ const StockDepot = sequelize.define('StockDepot', {
   rapport_id: { type: DataTypes.INTEGER, allowNull: false },
   depot_id: { type: DataTypes.INTEGER, allowNull: false },
   produit_id: { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   stock_bacs: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
   stock_impompable: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
   stock_disponible: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
