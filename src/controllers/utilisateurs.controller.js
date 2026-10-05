@@ -21,9 +21,9 @@ exports.update = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const { password } = req.body;
+  const { password, must_change_password } = req.body;
   if (!password) return res.status(400).json({ message: 'Nouveau mot de passe requis.' });
-  try { await svc.resetPassword(+req.params.id, password, req.user.id); res.json({ message: 'Mot de passe réinitialisé.' }); }
+  try { await svc.resetPassword(+req.params.id, password, req.user.id, !!must_change_password); res.json({ message: 'Mot de passe réinitialisé.' }); }
   catch (e) { res.status(e.status || 500).json({ message: e.message }); }
 };
 

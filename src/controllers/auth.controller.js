@@ -27,6 +27,19 @@ exports.me = async (req, res) => {
   }
 };
 
+exports.forcedChangePassword = async (req, res) => {
+  const { nouveauMotDePasse } = req.body;
+  if (!nouveauMotDePasse) {
+    return res.status(400).json({ message: 'Le nouveau mot de passe est requis.' });
+  }
+  try {
+    await authService.forcedChangePassword(req.user.id, nouveauMotDePasse);
+    res.json({ message: 'Mot de passe modifié avec succès.' });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message || 'Erreur serveur.' });
+  }
+};
+
 exports.changePassword = async (req, res) => {
   const { ancienMotDePasse, nouveauMotDePasse } = req.body;
   if (!ancienMotDePasse || !nouveauMotDePasse) {

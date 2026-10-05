@@ -39,6 +39,7 @@ const login = async (identifiant, password) => {
       username: user.username,
       email: user.email,
       is_admin: user.is_admin,
+      must_change_password: !!user.must_change_password,
       agent: user.agent,
       permissions: user.permissions,
     },
@@ -67,4 +68,14 @@ const changePassword = async (userId, ancienMotDePasse, nouveauMotDePasse) => {
   await user.update({ password: hash, updated_by: userId, updated_at: new Date() });
 };
 
-module.exports = { login, getMe, changePassword };
+const forcedChangePassword = async (userId, newPassword) => {
+  if (!newPassword || newPassword.length < 8) {
+    throw { status: 400, message: 'Le mot de passe doit contenir au moins 8 caractères.' };
+  }
+  const user = await Utilisateur.findByPk(userId);
+  if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
+  const hash = await bcrypt.hash(newPassword, 10);
+  await user.update({ password: hash, must_change_password: 0, updated_by: userId, updated_at: new Date() });
+};
+
+module.exports = { login, getMe, changePassword, forcedChangePassword };

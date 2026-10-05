@@ -47,7 +47,7 @@ const getById = async (id) => {
 };
 
 const create = async (data, userId) => {
-  const { agent_id, username, email, tel, password, profil } = data;
+  const { agent_id, username, email, tel, password, profil, must_change_password } = data;
   if (!agent_id || !username || !email || !password) {
     throw { status: 400, message: 'Agent, username, email et mot de passe sont requis.' };
   }
@@ -58,6 +58,7 @@ const create = async (data, userId) => {
     agent_id, username: username.trim(), email: email.trim(),
     tel: tel?.trim() || null, password: hash,
     is_admin: profilData.is_admin ? 1 : 0,
+    must_change_password: must_change_password ? 1 : 0,
     created_by: userId, updated_by: userId,
   });
 
@@ -86,11 +87,11 @@ const update = async (id, data, userId) => {
   return u;
 };
 
-const resetPassword = async (id, newPassword, userId) => {
+const resetPassword = async (id, newPassword, userId, mustChangePassword = false) => {
   const u = await Utilisateur.findOne({ where: { id, del: 0 } });
   if (!u) throw { status: 404, message: 'Utilisateur introuvable.' };
   const hash = await bcrypt.hash(newPassword, 10);
-  await u.update({ password: hash, updated_by: userId, updated_at: new Date() });
+  await u.update({ password: hash, must_change_password: mustChangePassword ? 1 : 0, updated_by: userId, updated_at: new Date() });
 };
 
 const toggleActif = async (id, userId) => {

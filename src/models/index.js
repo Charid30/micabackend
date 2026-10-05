@@ -49,6 +49,7 @@ const Utilisateur = sequelize.define('Utilisateur', {
   tel: { type: DataTypes.STRING(20), allowNull: true },
   password: { type: DataTypes.STRING(255), allowNull: false },
   is_admin: { type: DataTypes.TINYINT, defaultValue: 0 },
+  must_change_password: { type: DataTypes.TINYINT, defaultValue: 0 },
   ...auditFields,
 }, { tableName: 'utilisateurs', timestamps: false });
 
