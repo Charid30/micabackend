@@ -264,6 +264,38 @@ const AchatTrader = sequelize.define('AchatTrader', {
   ...auditFields,
 }, { tableName: 'achats_traders', timestamps: false });
 
+// ── TRESORERIE SEMAINE
+const TresorerieSemaine = sequelize.define('TresorerieSemaine', {
+  id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  rapport_id: { type: DataTypes.INTEGER, allowNull: false },
+  code:       { type: DataTypes.STRING(50), allowNull: false },
+  montant_n1: { type: DataTypes.DECIMAL(20, 2), allowNull: true },
+  montant_n:  { type: DataTypes.DECIMAL(20, 2), allowNull: true },
+  ...auditFields,
+}, { tableName: 'tresorerie_semaine', timestamps: false });
+
+// ── RECOMMANDATIONS
+const Recommandation = sequelize.define('Recommandation', {
+  id:                 { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  rapport_id:         { type: DataTypes.INTEGER, allowNull: false, unique: true },
+  tendance_generale:  { type: DataTypes.TEXT, allowNull: true },
+  risques_majeurs:    { type: DataTypes.TEXT, allowNull: true },
+  impact_sonabhy:     { type: DataTypes.TEXT, allowNull: true },
+  recommandations:    { type: DataTypes.TEXT, allowNull: true },
+  ...auditFields,
+}, { tableName: 'recommandations', timestamps: false });
+
+// ── CAF MOYEN ACHATS
+const CafMoyenAchat = sequelize.define('CafMoyenAchat', {
+  id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  annee:      { type: DataTypes.SMALLINT, allowNull: false },
+  mois:       { type: DataTypes.TINYINT, allowNull: false },
+  corridor:   { type: DataTypes.STRING(50), allowNull: false },
+  produit_id: { type: DataTypes.INTEGER, allowNull: false },
+  valeur_caf: { type: DataTypes.DECIMAL(10, 3), allowNull: true },
+  ...auditFields,
+}, { tableName: 'caf_moyen_achats', timestamps: false });
+
 // ── PARAMETRE
 const Parametre = sequelize.define('Parametre', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -362,6 +394,15 @@ AchatTrader.belongsTo(Fournisseur, { foreignKey: 'fournisseur_id', as: 'fourniss
 Produit.hasOne(ParametreAlerte, { foreignKey: 'produit_id' });
 ParametreAlerte.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
 
+RapportHebdo.hasMany(TresorerieSemaine, { foreignKey: 'rapport_id', as: 'tresorerie' });
+TresorerieSemaine.belongsTo(RapportHebdo, { foreignKey: 'rapport_id' });
+
+RapportHebdo.hasOne(Recommandation, { foreignKey: 'rapport_id', as: 'recommandation' });
+Recommandation.belongsTo(RapportHebdo, { foreignKey: 'rapport_id' });
+
+Produit.hasMany(CafMoyenAchat, { foreignKey: 'produit_id' });
+CafMoyenAchat.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
+
 module.exports = {
   sequelize,
   Entreprise,
@@ -388,4 +429,7 @@ module.exports = {
   AchatTrader,
   Parametre,
   ParametreAlerte,
+  TresorerieSemaine,
+  Recommandation,
+  CafMoyenAchat,
 };

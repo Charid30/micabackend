@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
-const tresoService = require('../services/tresorerie.service');
+const cafService = require('../services/cafMoyen.service');
 
-router.get('/semaine-courante', authenticate, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
-    const data = await tresoService.getSaisieData(req.user.id);
-    res.json(data);
+    const annee = req.query.annee ? parseInt(req.query.annee) : null;
+    res.json(await cafService.getData(annee));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -14,9 +14,8 @@ router.get('/semaine-courante', authenticate, async (req, res) => {
 
 router.post('/saisie', authenticate, async (req, res) => {
   try {
-    const { rapport_id, lignes } = req.body;
-    const result = await tresoService.saveSaisie(rapport_id, lignes, req.user.id);
-    res.json(result);
+    const { entries } = req.body;
+    res.json(await cafService.saveEntries(entries, req.user.id));
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
