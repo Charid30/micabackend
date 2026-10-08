@@ -23,6 +23,7 @@ router.use('/veille-marche', authenticate, require('./veilleMarche.routes'));
 router.use('/veille-geo', authenticate, require('./veilleGeo.routes'));
 router.use('/achats-traders', authenticate, require('./achatsTraders.routes'));
 router.use('/parametres', authenticate, require('./parametres.routes'));
+router.use('/historique', authenticate, require('./historique.routes'));
 router.use('/dashboard', authenticate, require('./dashboard.routes'));
 router.use('/recommandations', authenticate, require('./recommandations.routes'));
 router.use('/caf-moyen', authenticate, require('./cafMoyen.routes'));
