@@ -1,22 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth.middleware');
+const { authorize } = require('../middleware/auth');
 const tresoService = require('../services/tresorerie.service');
 
-router.get('/semaine-courante', authenticate, async (req, res) => {
+router.get('/semaine-courante', authorize('tresorerie', 'READ'), async (req, res) => {
   try {
-    const data = await tresoService.getSaisieData(req.user.id);
-    res.json(data);
+    res.json(await tresoService.getSaisieData(req.user.id));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-router.post('/saisie', authenticate, async (req, res) => {
+router.post('/saisie', authorize('tresorerie', 'WRITE'), async (req, res) => {
   try {
     const { rapport_id, lignes } = req.body;
-    const result = await tresoService.saveSaisie(rapport_id, lignes, req.user.id);
-    res.json(result);
+    if (!rapport_id || !Array.isArray(lignes)) {
+      return res.status(400).json({ message: 'rapport_id et lignes sont requis.' });
+    }
+    res.json(await tresoService.saveSaisie(rapport_id, lignes, req.user.id));
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

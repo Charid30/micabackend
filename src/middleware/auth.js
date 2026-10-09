@@ -18,6 +18,15 @@ const authenticate = async (req, res, next) => {
       ],
     });
     if (!user) return res.status(401).json({ message: 'Utilisateur introuvable.' });
+
+    // Invalidation token après changement de mot de passe
+    if (user.password_changed_at) {
+      const tokenIat = decoded.iat * 1000; // JWT iat en secondes → ms
+      if (tokenIat < new Date(user.password_changed_at).getTime()) {
+        return res.status(401).json({ message: 'Session expirée, veuillez vous reconnecter.' });
+      }
+    }
+
     req.user = user;
     next();
   } catch {
@@ -31,7 +40,6 @@ const authorize = (module, requiredAction) => (req, res, next) => {
   const perms = req.user.permissions ?? [];
   const allowed = perms.some((p) => {
     if (p.module !== module) return false;
-    // WRITE implique READ
     if (requiredAction === 'READ') return p.action === 'READ' || p.action === 'WRITE';
     return p.action === 'WRITE';
   });
@@ -42,7 +50,6 @@ const authorize = (module, requiredAction) => (req, res, next) => {
   next();
 };
 
-// Autorise si l'utilisateur a AU MOINS UNE des paires [module, action]
 const authorizeAny = (...moduleActions) => (req, res, next) => {
   if (req.user.is_admin) return next();
   const perms = req.user.permissions ?? [];

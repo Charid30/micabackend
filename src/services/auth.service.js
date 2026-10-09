@@ -53,10 +53,19 @@ const getMe = async (userId) => {
   });
 };
 
+function validatePasswordStrength(password) {
+  if (!password || password.length < 8)
+    throw { status: 400, message: 'Le mot de passe doit contenir au moins 8 caractères.' };
+  if (!/[A-Z]/.test(password))
+    throw { status: 400, message: 'Le mot de passe doit contenir au moins une lettre majuscule.' };
+  if (!/[0-9]/.test(password))
+    throw { status: 400, message: 'Le mot de passe doit contenir au moins un chiffre.' };
+  if (!/[^A-Za-z0-9]/.test(password))
+    throw { status: 400, message: 'Le mot de passe doit contenir au moins un caractère spécial (ex : @, #, !, %).' };
+}
+
 const changePassword = async (userId, ancienMotDePasse, nouveauMotDePasse) => {
-  if (!nouveauMotDePasse || nouveauMotDePasse.length < 8) {
-    throw { status: 400, message: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' };
-  }
+  validatePasswordStrength(nouveauMotDePasse);
 
   const user = await Utilisateur.findByPk(userId);
   if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
@@ -65,17 +74,17 @@ const changePassword = async (userId, ancienMotDePasse, nouveauMotDePasse) => {
   if (!valid) throw { status: 400, message: 'Ancien mot de passe incorrect.' };
 
   const hash = await bcrypt.hash(nouveauMotDePasse, 10);
-  await user.update({ password: hash, updated_by: userId, updated_at: new Date() });
+  const now = new Date();
+  await user.update({ password: hash, password_changed_at: now, updated_by: userId, updated_at: now });
 };
 
 const forcedChangePassword = async (userId, newPassword) => {
-  if (!newPassword || newPassword.length < 8) {
-    throw { status: 400, message: 'Le mot de passe doit contenir au moins 8 caractères.' };
-  }
+  validatePasswordStrength(newPassword);
   const user = await Utilisateur.findByPk(userId);
   if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
   const hash = await bcrypt.hash(newPassword, 10);
-  await user.update({ password: hash, must_change_password: 0, updated_by: userId, updated_at: new Date() });
+  const now = new Date();
+  await user.update({ password: hash, must_change_password: 0, password_changed_at: now, updated_by: userId, updated_at: now });
 };
 
 module.exports = { login, getMe, changePassword, forcedChangePassword };
