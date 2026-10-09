@@ -15,6 +15,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
+// ── Proxy (Apache en front) — nécessaire pour express-rate-limit et req.ip
+app.set('trust proxy', 1);
+
 // ── CORS : limité à l'origine configurée (ou localhost en dev)
 const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:4200';
 app.use(cors({
