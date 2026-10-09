@@ -21,7 +21,7 @@ const getData = async (annee) => {
   });
 
   const moisDispos = [...new Set(rows.map(r => r.mois))].sort((a, b) => a - b);
-  const moisAffichage = moisDispos.length > 0 ? moisDispos : [1, 2, 3, 4, 5, 6];
+  const moisAffichage = moisDispos.length > 0 ? moisDispos : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
   const tableau = CORRIDORS.map(corridor => ({
     corridor,
