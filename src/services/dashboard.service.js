@@ -23,14 +23,13 @@ const getSynthese = async () => {
 
   const rapportId = dernierRapport.id;
 
-  // Stocks intérieurs
+  // Stocks intérieurs — agrégés par produit (somme des stocks, moyenne des autonomies)
   const stocksInterieurs = await sequelize.query(`
     SELECT
-      p.code                             AS produit,
-      d.libelle                          AS depot,
-      COALESCE(sd.stock_disponible, 0)   AS stockDisponible,
-      COALESCE(sd.autonomie, 0)          AS autonomie,
-      COALESCE(pa.seuil_jours, 15)       AS seuil
+      p.code                                AS produit,
+      COALESCE(SUM(sd.stock_disponible), 0) AS stockDisponible,
+      COALESCE(AVG(sd.autonomie), 0)        AS autonomie,
+      COALESCE(MAX(pa.seuil_jours), 15)     AS seuil
     FROM produits p
     CROSS JOIN depots d
     LEFT JOIN stocks_depot sd
@@ -39,7 +38,8 @@ const getSynthese = async () => {
     LEFT JOIN parametres_alertes pa
       ON pa.produit_id = p.id AND pa.del = 0
     WHERE d.type = 'INTERIEUR' AND p.del = 0 AND d.del = 0
-    ORDER BY p.code, d.libelle
+    GROUP BY p.id, p.code
+    ORDER BY p.code
   `, { type: QueryTypes.SELECT, replacements: { rapportId } });
 
   // Stocks extérieurs
@@ -86,7 +86,6 @@ const getSynthese = async () => {
     .filter(s => parseFloat(s.stockDisponible) > 0 && parseFloat(s.autonomie) < parseFloat(s.seuil))
     .map(s => ({
       produit:  s.produit,
-      depot:    s.depot,
       autonomie: parseFloat(s.autonomie),
       seuil:    parseFloat(s.seuil),
     }));
