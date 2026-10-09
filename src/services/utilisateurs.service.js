@@ -4,6 +4,7 @@ const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../mo
 const MODULES = [
   'stocks', 'impompable', 'corridors', 'depots-int', 'temps-attente',
   'veille-marche', 'veille-geo', 'achats-traders', 'ventes',
+  'tresorerie', 'recommandations', 'caf_moyen',
   'rapports', 'administration', 'parametres',
 ];
 
