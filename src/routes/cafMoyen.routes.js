@@ -8,6 +8,7 @@ router.get('/', authorize('caf_moyen', 'READ'), async (req, res) => {
     const annee = req.query.annee ? parseInt(req.query.annee) : null;
     res.json(await cafService.getData(annee));
   } catch (err) {
+    console.error('[CAF_MOYEN]', err);
     res.status(500).json({ message: err.message });
   }
 });

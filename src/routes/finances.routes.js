@@ -7,6 +7,7 @@ router.get('/semaine-courante', authorize('tresorerie', 'READ'), async (req, res
   try {
     res.json(await tresoService.getSaisieData(req.user.id));
   } catch (err) {
+    console.error('[TRESORERIE]', err);
     res.status(500).json({ message: err.message });
   }
 });

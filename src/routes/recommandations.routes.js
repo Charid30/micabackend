@@ -7,6 +7,7 @@ router.get('/semaine-courante', authorize('recommandations', 'READ'), async (req
   try {
     res.json(await recoService.getSaisieData(req.user.id));
   } catch (err) {
+    console.error('[RECOMMANDATIONS]', err);
     res.status(500).json({ message: err.message });
   }
 });
