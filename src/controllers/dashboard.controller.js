@@ -1,4 +1,5 @@
 const dashboardService = require('../services/dashboard.service');
+const { sendError } = require('../utils/http-error');
 
 exports.getSynthese = async (req, res) => {
   console.log('[Dashboard] GET /synthese appelé');
@@ -9,6 +10,6 @@ exports.getSynthese = async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[Dashboard] ERREUR :', err.message);
-    res.status(500).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err);
   }
 };

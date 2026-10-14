@@ -1,4 +1,5 @@
 const { getSaisieData, saveSaisie } = require('../services/achatsTraders.service');
+const { sendError } = require('../utils/http-error');
 
 exports.getSemaineCourante = async (req, res) => {
   try {
@@ -6,7 +7,7 @@ exports.getSemaineCourante = async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[AchatsTraders] GET :', err.message);
-    res.status(500).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err);
   }
 };
 
@@ -20,6 +21,6 @@ exports.postSaisie = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[AchatsTraders] POST :', err.message);
-    res.status(500).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err);
   }
 };

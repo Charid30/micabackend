@@ -1,4 +1,5 @@
 const { getListe, getApercu, archiver } = require('../services/rapports.service');
+const { sendError } = require('../utils/http-error');
 
 exports.getListe = async (req, res) => {
   try {
@@ -6,7 +7,7 @@ exports.getListe = async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[Rapports] GET liste :', err.message);
-    res.status(500).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err);
   }
 };
 
@@ -16,7 +17,7 @@ exports.archiver = async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[Rapports] POST archiver :', err.message);
-    res.status(400).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err, 400);
   }
 };
 
@@ -27,6 +28,6 @@ exports.getApercu = async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[Rapports] GET apercu :', err.message);
-    res.status(500).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err);
   }
 };

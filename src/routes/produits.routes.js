@@ -1,40 +1,46 @@
 const express = require('express');
 const router = express.Router();
 const { Produit } = require('../models');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, writeRequires } = require('../middleware/auth');
+const { sendError } = require('../utils/http-error');
+const v = require('../middleware/validate');
+
+const FIELDS = ['code', 'libelle', 'unite'];
 
 router.use(authenticate);
+// Lecture : tout utilisateur connecté (écrans de saisie) ; écriture : permission parametres:WRITE
+router.use(writeRequires('parametres'));
 
 router.get('/', async (req, res) => {
   try {
     const data = await Produit.findAll({ where: { del: 0 }, order: [['code', 'ASC']] });
     res.json(data);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) { sendError(res, e); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', v.reference(false, v.produitExtra), async (req, res) => {
   try {
-    const p = await Produit.create({ ...req.body, created_by: req.user.id, updated_by: req.user.id });
-    res.status(201).json(p);
-  } catch (e) { res.status(400).json({ message: e.message }); }
+    const item = await Produit.create({ ...v.pick(req.body, FIELDS), created_by: req.user.id, updated_by: req.user.id });
+    res.status(201).json(item);
+  } catch (e) { sendError(res, e, 400); }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', v.reference(true, v.produitExtra), async (req, res) => {
   try {
-    const p = await Produit.findOne({ where: { id: req.params.id, del: 0 } });
-    if (!p) return res.status(404).json({ message: 'Produit introuvable' });
-    await p.update({ ...req.body, updated_by: req.user.id });
-    res.json(p);
-  } catch (e) { res.status(400).json({ message: e.message }); }
+    const item = await Produit.findOne({ where: { id: req.params.id, del: 0 } });
+    if (!item) return res.status(404).json({ message: 'Produit introuvable' });
+    await item.update({ ...v.pick(req.body, FIELDS), updated_by: req.user.id });
+    res.json(item);
+  } catch (e) { sendError(res, e, 400); }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', v.idParam, async (req, res) => {
   try {
-    const p = await Produit.findOne({ where: { id: req.params.id, del: 0 } });
-    if (!p) return res.status(404).json({ message: 'Produit introuvable' });
-    await p.update({ del: 1, deleted_by: req.user.id, deleted_at: new Date() });
+    const item = await Produit.findOne({ where: { id: req.params.id, del: 0 } });
+    if (!item) return res.status(404).json({ message: 'Produit introuvable' });
+    await item.update({ del: 1, deleted_by: req.user.id, deleted_at: new Date() });
     res.json({ message: 'Supprimé' });
-  } catch (e) { res.status(400).json({ message: e.message }); }
+  } catch (e) { sendError(res, e, 400); }
 });
 
 module.exports = router;

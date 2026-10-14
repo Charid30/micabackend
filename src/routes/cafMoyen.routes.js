@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authorize } = require('../middleware/auth');
 const cafService = require('../services/cafMoyen.service');
+const { sendError } = require('../utils/http-error');
 
 router.get('/', authorize('caf_moyen', 'READ'), async (req, res) => {
   try {
@@ -9,7 +10,7 @@ router.get('/', authorize('caf_moyen', 'READ'), async (req, res) => {
     res.json(await cafService.getData(annee));
   } catch (err) {
     console.error('[CAF_MOYEN]', err);
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
 });
 
@@ -19,7 +20,7 @@ router.post('/saisie', authorize('caf_moyen', 'WRITE'), async (req, res) => {
     if (!Array.isArray(entries)) return res.status(400).json({ message: 'entries doit être un tableau.' });
     res.json(await cafService.saveEntries(entries, req.user.id));
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    sendError(res, err, 400);
   }
 });
 

@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { authorize } = require('../middleware/auth');
 const recoService = require('../services/recommandations.service');
+const { sendError } = require('../utils/http-error');
 
 router.get('/semaine-courante', authorize('recommandations', 'READ'), async (req, res) => {
   try {
     res.json(await recoService.getSaisieData(req.user.id));
   } catch (err) {
     console.error('[RECOMMANDATIONS]', err);
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
 });
 
@@ -19,7 +20,7 @@ router.post('/saisie', authorize('recommandations', 'WRITE'), async (req, res) =
     res.json(await recoService.saveSaisie(rapport_id,
       { tendance_generale, risques_majeurs, impact_sonabhy, recommandations }, req.user.id));
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    sendError(res, err, 400);
   }
 });
 

@@ -51,8 +51,16 @@ const Utilisateur = sequelize.define('Utilisateur', {
   is_admin: { type: DataTypes.TINYINT, defaultValue: 0 },
   must_change_password: { type: DataTypes.TINYINT, defaultValue: 0 },
   password_changed_at: { type: DataTypes.DATE, allowNull: true },
+  failed_login_attempts: { type: DataTypes.INTEGER, defaultValue: 0 },
+  locked_until: { type: DataTypes.DATE, allowNull: true },
   ...auditFields,
-}, { tableName: 'utilisateurs', timestamps: false });
+}, {
+  tableName: 'utilisateurs',
+  timestamps: false,
+  // Le hash du mot de passe n'est jamais chargé (ni renvoyé au client) sauf via scope('withPassword')
+  defaultScope: { attributes: { exclude: ['password', 'failed_login_attempts', 'locked_until'] } },
+  scopes: { withPassword: {} },
+});
 
 // ── PERMISSION
 const Permission = sequelize.define('Permission', {

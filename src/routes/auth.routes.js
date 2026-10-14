@@ -3,6 +3,7 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth');
+const v = require('../middleware/validate');
 
 // 10 tentatives max / 15 min par IP sur le login
 const loginLimiter = rateLimit({
@@ -23,9 +24,10 @@ const passwordLimiter = rateLimit({
   message: { message: 'Trop de tentatives. Réessayez dans 15 minutes.' },
 });
 
-router.post('/login', loginLimiter, authController.login);
+router.post('/login', loginLimiter, v.login, authController.login);
+router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.me);
-router.put('/change-password', authenticate, passwordLimiter, authController.changePassword);
-router.put('/force-change-password', authenticate, passwordLimiter, authController.forcedChangePassword);
+router.put('/change-password', authenticate, passwordLimiter, v.changePassword, authController.changePassword);
+router.put('/force-change-password', authenticate, passwordLimiter, v.forcedChangePassword, authController.forcedChangePassword);
 
 module.exports = router;

@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { authorize } = require('../middleware/auth');
 const tresoService = require('../services/tresorerie.service');
+const { sendError } = require('../utils/http-error');
 
 router.get('/semaine-courante', authorize('tresorerie', 'READ'), async (req, res) => {
   try {
     res.json(await tresoService.getSaisieData(req.user.id));
   } catch (err) {
     console.error('[TRESORERIE]', err);
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
 });
 
@@ -20,7 +21,7 @@ router.post('/saisie', authorize('tresorerie', 'WRITE'), async (req, res) => {
     }
     res.json(await tresoService.saveSaisie(rapport_id, lignes, req.user.id));
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    sendError(res, err, 400);
   }
 });
 

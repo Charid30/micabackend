@@ -1,4 +1,5 @@
 const encoursService = require('../services/encours.service');
+const { sendError } = require('../utils/http-error');
 
 exports.getSaisieData = async (req, res) => {
   try {
@@ -6,7 +7,7 @@ exports.getSaisieData = async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[Encours] GET :', err.message);
-    res.status(500).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err);
   }
 };
 
@@ -20,6 +21,6 @@ exports.saveSaisie = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[Encours] POST :', err.message);
-    res.status(400).json({ message: err.message || 'Erreur serveur.' });
+    sendError(res, err, 400);
   }
 };

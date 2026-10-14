@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../models');
+const { validatePasswordStrength } = require('./auth.service');
 
 const MODULES = [
   'stocks', 'impompable', 'corridors', 'depots-int', 'temps-attente',
@@ -52,6 +53,7 @@ const create = async (data, userId) => {
   if (!agent_id || !username || !email || !password) {
     throw { status: 400, message: 'Agent, username, email et mot de passe sont requis.' };
   }
+  validatePasswordStrength(password);
   const hash = await bcrypt.hash(password, 10);
   const profilData = PROFILS[profil] || PROFILS.LECTEUR;
 
@@ -62,6 +64,7 @@ const create = async (data, userId) => {
     must_change_password: must_change_password ? 1 : 0,
     created_by: userId, updated_by: userId,
   });
+  delete user.dataValues.password; // ne jamais renvoyer le hash au client
 
   if (profilData.permissions.length > 0) {
     await Permission.bulkCreate(
@@ -91,8 +94,15 @@ const update = async (id, data, userId) => {
 const resetPassword = async (id, newPassword, userId, mustChangePassword = false) => {
   const u = await Utilisateur.findOne({ where: { id, del: 0 } });
   if (!u) throw { status: 404, message: 'Utilisateur introuvable.' };
+  validatePasswordStrength(newPassword);
   const hash = await bcrypt.hash(newPassword, 10);
-  await u.update({ password: hash, must_change_password: mustChangePassword ? 1 : 0, updated_by: userId, updated_at: new Date() });
+  const now = new Date();
+  // password_changed_at invalide les sessions ouvertes avec l'ancien mot de passe ; on lève aussi un éventuel verrouillage
+  await u.update({
+    password: hash, must_change_password: mustChangePassword ? 1 : 0,
+    password_changed_at: now, failed_login_attempts: 0, locked_until: null,
+    updated_by: userId, updated_at: now,
+  });
 };
 
 const toggleActif = async (id, userId) => {
@@ -116,6 +126,8 @@ const getPermissions = async (userId) => {
 };
 
 const savePermissions = async (utilisateurId, permissionsData, userId) => {
+  const inconnu = permissionsData.find(p => !MODULES.includes(p.module));
+  if (inconnu) throw { status: 400, message: `Module inconnu : ${String(inconnu.module).slice(0, 50)}` };
   await Permission.destroy({ where: { utilisateur_id: utilisateurId } });
 
   const toInsert = permissionsData.filter(p => p.action && p.action !== 'NONE');
