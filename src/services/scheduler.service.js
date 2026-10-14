@@ -1,3 +1,6 @@
+// Publication automatique du rapport hebdomadaire (expression cron stockee dans la table parametres,
+// cle PUBLICATION_CRON). L'appel cron.schedule(expression, fonction, { timezone }) est compatible
+// avec node-cron 3 et 4 : ne pas utiliser l'option "scheduled", supprimee dans la version 4.
 const cron = require('node-cron');
 const { RapportHebdo, Parametre } = require('../models');
 const { Op } = require('sequelize');
