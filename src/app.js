@@ -1,3 +1,13 @@
+// ============================================================
+//  API MICA - point d'entree
+//  Ordre des protections appliquees a chaque requete :
+//   1. CORS limite a l'origine configuree (CORS_ORIGIN), cookies autorises
+//   2. Helmet (en-tetes de securite HTTP)
+//   3. Limitation de debit : par compte si session valide, par IP sinon
+//   4. Anti-CSRF : en-tete X-Requested-With exige sur les ecritures (/api)
+//   5. Routes : authentification (cookie HttpOnly) puis permissions par module
+//   6. Erreurs : messages techniques jamais renvoyes au client (utils/http-error.js)
+// ============================================================
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
