@@ -1,5 +1,7 @@
 const sequelize = require('../config/database');
 const { QueryTypes } = require('sequelize');
+const { RapportHebdo } = require('../models');
+const { getAutonomie } = require('./autonomie.service');
 
 const getSynthese = async () => {
   // Chercher le dernier rapport publié
@@ -23,35 +25,13 @@ const getSynthese = async () => {
 
   const rapportId = dernierRapport.id;
 
-  // Stocks intérieurs — agrégés par produit (somme des stocks, moyenne des autonomies)
-  const stocksInterieurs = await sequelize.query(`
-    SELECT
-      p.code                                AS produit,
-      COALESCE(SUM(sd.stock_disponible), 0) AS stockDisponible,
-      COALESCE(AVG(sd.autonomie), 0)        AS autonomie,
-      COALESCE(MAX(pa.seuil_jours), 15)     AS seuil
-    FROM produits p
-    CROSS JOIN depots d
-    LEFT JOIN stocks_depot sd
-      ON sd.produit_id = p.id AND sd.depot_id = d.id
-      AND sd.rapport_id = :rapportId AND sd.del = 0
-    LEFT JOIN parametres_alertes pa
-      ON pa.produit_id = p.id AND pa.del = 0
-    WHERE d.type = 'INTERIEUR' AND p.del = 0 AND d.del = 0
-    GROUP BY p.id, p.code
-    ORDER BY p.code
-  `, { type: QueryTypes.SELECT, replacements: { rapportId } });
-
-  // Stocks extérieurs
-  const stocksExterieurs = await sequelize.query(`
-    SELECT COALESCE(sd.autonomie, 0) AS autonomie
-    FROM produits p
-    CROSS JOIN depots d
-    LEFT JOIN stocks_depot sd
-      ON sd.produit_id = p.id AND sd.depot_id = d.id
-      AND sd.rapport_id = :rapportId AND sd.del = 0
-    WHERE d.type = 'EXTERIEUR' AND p.del = 0 AND d.del = 0
-  `, { type: QueryTypes.SELECT, replacements: { rapportId } });
+  // Autonomie : meme calcul que la saisie et le rapport (stocks au jeudi de fin de semaine)
+  const rapport = await RapportHebdo.findByPk(rapportId);
+  const auto = await getAutonomie(rapport);
+  const moyenne = (lignes) => {
+    const v = lignes.map(l => l.autonomie).filter(a => a !== null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+  };
 
   // Camions
   const [camions] = await sequelize.query(`
@@ -70,39 +50,30 @@ const getSynthese = async () => {
       AND sens = 'DETTE_ETAT_VERS_SONABHY' AND del = 0
   `, { type: QueryTypes.SELECT, replacements: { rapportId } });
 
-  // Calculs
-  const avgInt = stocksInterieurs.length
-    ? stocksInterieurs.reduce((a, s) => a + parseFloat(s.autonomie), 0) / stocksInterieurs.length
-    : 0;
-
-  const avgExt = stocksExterieurs.length
-    ? stocksExterieurs.reduce((a, s) => a + parseFloat(s.autonomie), 0) / stocksExterieurs.length
-    : 0;
-
   const charges  = parseInt(camions?.camionsCharges || 0);
   const objectif = parseInt(camions?.objectif || 0);
 
-  const alertes = stocksInterieurs
-    .filter(s => parseFloat(s.stockDisponible) > 0 && parseFloat(s.autonomie) < parseFloat(s.seuil))
-    .map(s => ({
-      produit:  s.produit,
-      autonomie: parseFloat(s.autonomie),
-      seuil:    parseFloat(s.seuil),
-    }));
+  // Alertes : chaque depot x produit sous l'objectif (rouge ou jaune)
+  const alertes = [...auto.depots_interieurs, ...auto.depots_exterieurs].flatMap(d => d.lignes
+    .filter(l => l.couleur === 'rouge' || l.couleur === 'jaune')
+    .map(l => ({ produit: l.produit_libelle, depot: d.depot_libelle, autonomie: l.autonomie, seuil: l.objectif_jours, couleur: l.couleur })))
+    .sort((a, b) => a.autonomie - b.autonomie);
 
   return {
-    autonomieMoyenneInt:  Math.round(avgInt * 10) / 10,
-    autonomieMoyenneExt:  Math.round(avgExt * 10) / 10,
+    autonomieMoyenneInt:  Math.round(moyenne(auto.synthese_interieure) * 10) / 10,
+    autonomieMoyenneExt:  Math.round(moyenne(auto.synthese_exterieure) * 10) / 10,
     camionsCharges:       charges,
     tauxRealisation:      objectif > 0 ? Math.round((charges / objectif) * 1000) / 1000 : 0,
     detteEtat:            parseFloat(dette?.detteEtat || 0),
     alertes,
-    stocksInterieurs: stocksInterieurs.map(s => ({
-      produit:         s.produit,
-      stockDisponible: parseFloat(s.stockDisponible),
-      autonomie:       parseFloat(s.autonomie),
-      seuil:           parseFloat(s.seuil),
-      tauxCouverture:  parseFloat(s.seuil) > 0 ? parseFloat(s.autonomie) / parseFloat(s.seuil) : 0,
+    stocksInterieurs: auto.synthese_interieure.map(s => ({
+      produit:         s.produit_libelle,
+      stockDisponible: s.volume_total,
+      stockTonnes:     s.volume_total_tonnes,
+      autonomie:       s.autonomie ?? 0,
+      seuil:           s.objectif_jours,
+      couleur:         s.couleur,
+      tauxCouverture:  s.objectif_jours > 0 && s.autonomie !== null ? s.autonomie / s.objectif_jours : 0,
     })),
   };
 };

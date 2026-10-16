@@ -78,23 +78,8 @@ const getTresorerie = async (semaines = 12) => {
 
   const ids = rapports.map(r => r.id);
 
-  const SIGNES = {
-    AVOIRS_BANQUES: 1, CREANCES_ETAT: 1, CREANCES_CLIENTS: 1,
-    VALORISATION_STOCKS: 1, DETTES_BANQUES: -1, DETTES_FOURNISSEURS: -1, DETTES_ETAT: -1,
-  };
-
-  const rows = await TresorerieSemaine.findAll({
-    where: { rapport_id: { [Op.in]: ids }, del: 0 },
-    attributes: ['rapport_id', 'code', 'montant_n'],
-    raw: true,
-  });
-
-  const totaux = {};
-  rows.forEach(r => {
-    const signe = SIGNES[r.code] ?? 1;
-    const v = parseFloat(r.montant_n) || 0;
-    totaux[r.rapport_id] = (totaux[r.rapport_id] || 0) + signe * v;
-  });
+  // Meme regle de calcul que l'ecran Tresorerie (lignes parametrables, sous-totaux)
+  const totaux = await require('./tresorerie.service').totauxParRapport(ids);
 
   return {
     labels: rapports.map(label),

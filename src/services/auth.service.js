@@ -2,14 +2,17 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const jwtConfig = require('../config/jwt');
-const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../models');
+const { Utilisateur, Agent, Direction, Entreprise, Permission, Depot } = require('../models');
 
 const _userIncludes = [
   {
     model: Agent, as: 'agent',
     include: [{ model: Direction, as: 'direction', include: [{ model: Entreprise, as: 'entreprise' }] }],
   },
-  { model: Permission, as: 'permissions', required: false },
+  {
+    model: Permission, as: 'permissions', required: false,
+    include: [{ model: Depot, as: 'depot', attributes: ['id', 'code', 'libelle', 'type'], required: false }],
+  },
 ];
 
 const issueToken = (user) => jwt.sign(

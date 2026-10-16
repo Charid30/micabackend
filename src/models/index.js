@@ -136,6 +136,7 @@ const StockDepot = sequelize.define('StockDepot', {
   produit_id: { type: DataTypes.INTEGER, allowNull: false },
   date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   stock_bacs: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
+  stock_embranchement: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
   stock_impompable: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
   stock_disponible: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
   autonomie: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
@@ -278,10 +279,55 @@ const TresorerieSemaine = sequelize.define('TresorerieSemaine', {
   id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id: { type: DataTypes.INTEGER, allowNull: false },
   code:       { type: DataTypes.STRING(50), allowNull: false },
+  libelle:    { type: DataTypes.STRING(255), allowNull: true },   // libelle au moment de la saisie
   montant_n1: { type: DataTypes.DECIMAL(20, 2), allowNull: true },
   montant_n:  { type: DataTypes.DECIMAL(20, 2), allowNull: true },
   ...auditFields,
 }, { tableName: 'tresorerie_semaine', timestamps: false });
+
+// ── REFERENTIEL STOCK (valeurs « figées » par dépôt × produit, historisées par date d'effet)
+const ReferentielStock = sequelize.define('ReferentielStock', {
+  id:            { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  depot_id:      { type: DataTypes.INTEGER, allowNull: false },
+  produit_id:    { type: DataTypes.INTEGER, allowNull: false },
+  impompable:    { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
+  conso_moyenne: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
+  exclu_total:   { type: DataTypes.TINYINT, defaultValue: 0 },
+  date_effet:    { type: DataTypes.DATEONLY, allowNull: false },
+  ...auditFields,
+}, { tableName: 'referentiels_stock', timestamps: false });
+
+// ── BESOINS EXTERIEURS (besoin journalier par produit, fixe par la DSTA)
+const BesoinExterieur = sequelize.define('BesoinExterieur', {
+  id:                { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  produit_id:        { type: DataTypes.INTEGER, allowNull: false },
+  besoin_journalier: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
+  date_effet:        { type: DataTypes.DATEONLY, allowNull: false },
+  ...auditFields,
+}, { tableName: 'besoins_exterieurs', timestamps: false });
+
+// ── ACTIONS ENTREPRISES pour relever le niveau des stocks (DSTA)
+const ActionStock = sequelize.define('ActionStock', {
+  id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  rapport_id: { type: DataTypes.INTEGER, allowNull: false },
+  depot_id:   { type: DataTypes.INTEGER, allowNull: false },
+  produit_id: { type: DataTypes.INTEGER, allowNull: false },
+  action:     { type: DataTypes.TEXT, allowNull: false },
+  ...auditFields,
+}, { tableName: 'actions_stocks', timestamps: false });
+
+// ── LIGNES DE TRESORERIE (configurables par le chef Tresorerie)
+const TresorerieLigne = sequelize.define('TresorerieLigne', {
+  id:        { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  code:      { type: DataTypes.STRING(50), allowNull: false, unique: true },
+  libelle:   { type: DataTypes.STRING(255), allowNull: false },
+  sens:      { type: DataTypes.ENUM('AVOIR', 'DETTE'), defaultValue: 'AVOIR' },
+  type:      { type: DataTypes.ENUM('SAISIE', 'SOUS_TOTAL', 'TOTAL'), defaultValue: 'SAISIE' },
+  parent_id: { type: DataTypes.INTEGER, allowNull: true },
+  ordre:     { type: DataTypes.INTEGER, defaultValue: 0 },
+  actif:     { type: DataTypes.TINYINT, defaultValue: 1 },
+  ...auditFields,
+}, { tableName: 'tresorerie_lignes', timestamps: false });
 
 // ── RECOMMANDATIONS
 const Recommandation = sequelize.define('Recommandation', {
@@ -338,6 +384,8 @@ Utilisateur.belongsTo(Agent, { foreignKey: 'agent_id', as: 'agent' });
 
 Utilisateur.hasMany(Permission, { foreignKey: 'utilisateur_id', as: 'permissions' });
 Permission.belongsTo(Utilisateur, { foreignKey: 'utilisateur_id', as: 'utilisateur' });
+// Depot auquel la permission est limitee (le type sert a l'affichage du menu interieur / exterieur)
+Permission.belongsTo(Depot, { foreignKey: 'depot_id', as: 'depot' });
 
 RapportHebdo.hasMany(StockDepot, { foreignKey: 'rapport_id', as: 'stocks' });
 StockDepot.belongsTo(RapportHebdo, { foreignKey: 'rapport_id', as: 'rapport' });
@@ -406,6 +454,11 @@ ParametreAlerte.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
 RapportHebdo.hasMany(TresorerieSemaine, { foreignKey: 'rapport_id', as: 'tresorerie' });
 TresorerieSemaine.belongsTo(RapportHebdo, { foreignKey: 'rapport_id' });
 
+ReferentielStock.belongsTo(Depot, { foreignKey: 'depot_id', as: 'depot' });
+ReferentielStock.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
+BesoinExterieur.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
+TresorerieLigne.belongsTo(TresorerieLigne, { foreignKey: 'parent_id', as: 'parent' });
+
 RapportHebdo.hasOne(Recommandation, { foreignKey: 'rapport_id', as: 'recommandation' });
 Recommandation.belongsTo(RapportHebdo, { foreignKey: 'rapport_id' });
 
@@ -439,6 +492,10 @@ module.exports = {
   Parametre,
   ParametreAlerte,
   TresorerieSemaine,
+  TresorerieLigne,
+  ReferentielStock,
+  BesoinExterieur,
+  ActionStock,
   Recommandation,
   CafMoyenAchat,
 };

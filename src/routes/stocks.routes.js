@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { authorize, authorizeAny } = require('../middleware/auth');
+const { authorizeAny } = require('../middleware/auth');
 const stocksController = require('../controllers/stocks.controller');
+const v = require('../middleware/validate');
 
-router.get('/semaine-courante', authorize('stocks', 'READ'), stocksController.getSaisieData);
-// Autorisé si l'utilisateur a stocks:WRITE OU impompable:WRITE
-router.post('/saisie', authorizeAny(['stocks', 'WRITE'], ['impompable', 'WRITE']), stocksController.saveSaisie);
+// Lecture : saisie des stocks ou redaction des actions (DSTA)
+router.get('/semaine-courante', authorizeAny(['stocks', 'READ'], ['actions-stocks', 'READ']), stocksController.getSaisieData);
+// Ecriture : chaque champ est controle selon le droit correspondant (voir stocks.controller)
+router.post('/saisie', authorizeAny(['stocks', 'WRITE'], ['actions-stocks', 'WRITE']), v.saisieStocks, stocksController.saveSaisie);
 
 module.exports = router;

@@ -3,18 +3,22 @@ const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../mo
 const { validatePasswordStrength } = require('./auth.service');
 
 const MODULES = [
-  'stocks', 'impompable', 'corridors', 'depots-int', 'temps-attente',
+  'stocks', 'impompable', 'referentiel-stocks', 'actions-stocks', 'corridors', 'depots-int', 'temps-attente',
   'veille-marche', 'veille-geo', 'achats-traders', 'ventes',
-  'tresorerie', 'recommandations', 'caf_moyen',
+  'tresorerie', 'tresorerie-lignes', 'recommandations', 'caf_moyen',
   'rapports', 'administration', 'parametres',
 ];
+
+// Droits reserves a une personne designee : jamais accordes en ecriture par un profil type,
+// l'administrateur les attribue nominativement (ecran Utilisateurs > permissions)
+const MODULES_DESIGNES = ['impompable', 'referentiel-stocks', 'actions-stocks', 'tresorerie-lignes'];
 
 const PROFILS = {
   ADMIN: { is_admin: true, permissions: [] },
   GESTIONNAIRE: {
     is_admin: false,
     permissions: MODULES.filter(m => m !== 'administration').map(m => ({
-      module: m, action: m === 'rapports' ? 'READ' : 'WRITE',
+      module: m, action: m === 'rapports' || MODULES_DESIGNES.includes(m) ? 'READ' : 'WRITE',
     })),
   },
   LECTEUR: {

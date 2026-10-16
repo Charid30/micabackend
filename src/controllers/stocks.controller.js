@@ -1,29 +1,28 @@
 const stocksService = require('../services/stocks.service');
 const { sendError } = require('../utils/http-error');
 
+// Droits d'ecriture de l'utilisateur sur l'ecran Stocks
+//  - stocks         : quantites du jour (stock en bacs, stock en embranchement)
+//  - actions-stocks : actions entreprises pour relever le niveau des stocks (DSTA)
+const droitsDe = (user) => {
+  const perms = user.permissions ?? [];
+  const peut = (module) => user.is_admin || perms.some(p => p.module === module && p.action === 'WRITE');
+  return { stocks: peut('stocks'), actions: peut('actions-stocks') };
+};
+
 exports.getSaisieData = async (req, res) => {
   try {
-    const data = await stocksService.getSaisieData(req.user.id);
-    res.json(data);
+    res.json(await stocksService.getSaisieData(req.user, droitsDe(req.user)));
   } catch (err) {
-    console.error('[Stocks] GET :', err.message);
     sendError(res, err);
   }
 };
 
 exports.saveSaisie = async (req, res) => {
   try {
-    const { rapport_id, depots } = req.body;
-    if (!rapport_id || !Array.isArray(depots)) {
-      return res.status(400).json({ message: 'Données invalides.' });
-    }
-    const perms = req.user.permissions ?? [];
-    const canWriteImpompable = req.user.is_admin || perms.some(p => p.module === 'impompable' && p.action === 'WRITE');
-    const canWriteStocks     = req.user.is_admin || perms.some(p => p.module === 'stocks'     && p.action === 'WRITE');
-    const result = await stocksService.saveSaisie(rapport_id, depots, req.user.id, { canWriteImpompable, canWriteStocks });
-    res.json(result);
+    const { rapport_id, lignes } = req.body;
+    res.json(await stocksService.saveSaisie(rapport_id, lignes, req.user, droitsDe(req.user)));
   } catch (err) {
-    console.error('[Stocks] POST :', err.message);
     sendError(res, err, 400);
   }
 };

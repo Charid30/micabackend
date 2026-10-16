@@ -31,3 +31,16 @@ exports.getApercu = async (req, res) => {
     sendError(res, err);
   }
 };
+
+exports.exportExcel = async (req, res) => {
+  try {
+    const { buffer, filename } = await require('../services/export-excel.service').exporterRapport(req.params.id);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error('[Rapports] GET export-excel :', err.message);
+    sendError(res, err);
+  }
+};

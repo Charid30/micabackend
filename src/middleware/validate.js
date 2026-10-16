@@ -115,6 +115,56 @@ module.exports = {
     str('pays', { min: 0, max: 50, label: 'Pays', optional: true }),
   ],
 
+  // ── Saisie quotidienne des stocks
+  saisieStocks: check([
+    id('rapport_id', 'Rapport'),
+    body('lignes').isArray({ min: 1, max: 500 }).withMessage('Lignes de saisie invalides.'),
+    body('lignes.*.depot_id').isInt({ min: 1 }).withMessage('Dépôt invalide.').toInt(),
+    body('lignes.*.produit_id').isInt({ min: 1 }).withMessage('Produit invalide.').toInt(),
+    body('lignes.*.stock_bacs').optional({ values: 'null' }).isFloat({ min: -1e12, max: 1e12 }).withMessage('Stock en bacs invalide.').toFloat(),
+    body('lignes.*.stock_embranchement').optional({ values: 'null' }).isFloat({ min: 0, max: 1e12 }).withMessage('Stock en embranchement invalide.').toFloat(),
+    body('lignes.*.action').optional({ values: 'null' }).isString().isLength({ max: 2000 }).withMessage('Action trop longue (2000 caractères maximum).'),
+  ]),
+
+  // ── Référentiel des stocks
+  referentielDepots: check([
+    body('date_effet').isISO8601({ strict: true }).withMessage("Date d'effet invalide."),
+    body('lignes').isArray({ min: 1, max: 500 }).withMessage('Lignes invalides.'),
+    body('lignes.*.depot_id').isInt({ min: 1 }).withMessage('Dépôt invalide.').toInt(),
+    body('lignes.*.produit_id').isInt({ min: 1 }).withMessage('Produit invalide.').toInt(),
+    body('lignes.*.impompable').optional({ values: 'null' }).isFloat({ min: 0, max: 1e12 }).withMessage('Impompable invalide.').toFloat(),
+    body('lignes.*.conso_moyenne').optional({ values: 'null' }).isFloat({ min: 0, max: 1e12 }).withMessage('Consommation moyenne invalide.').toFloat(),
+    body('lignes.*.exclu_total').optional({ values: 'null' }).isBoolean({ loose: true }).withMessage('Valeur "exclu du total" invalide.'),
+  ]),
+  referentielBesoins: check([
+    body('date_effet').isISO8601({ strict: true }).withMessage("Date d'effet invalide."),
+    body('besoins').isArray({ min: 1, max: 100 }).withMessage('Besoins invalides.'),
+    body('besoins.*.produit_id').isInt({ min: 1 }).withMessage('Produit invalide.').toInt(),
+    body('besoins.*.besoin_journalier').isFloat({ min: 0, max: 1e12 }).withMessage('Besoin journalier invalide.').toFloat(),
+  ]),
+  referentielParametres: check([
+    body('seuil_rouge_jours').isFloat({ min: 0, max: 365 }).withMessage('Seuil rouge invalide (0 à 365 jours).').toFloat(),
+    body('couverture_objectif_pct').isFloat({ min: 1, max: 1000 }).withMessage('Objectif de couverture invalide.').toFloat(),
+    body('densite_gaz').isFloat({ min: 0.01, max: 2 }).withMessage('Densité du gaz invalide (0,01 à 2 t/m³).').toFloat(),
+  ]),
+
+  // ── Trésorerie
+  saisieTresorerie: check([
+    id('rapport_id', 'Rapport'),
+    body('lignes').isArray({ max: 200 }).withMessage('Lignes invalides.'),
+    body('lignes.*.code').isString().isLength({ min: 1, max: 50 }).withMessage('Code de ligne invalide.'),
+    body('lignes.*.montant_n').optional({ values: 'null' }).isFloat({ min: -1e15, max: 1e15 }).withMessage('Montant invalide.').toFloat(),
+  ]),
+  ligneTresorerie: (isUpdate) => check([
+    ...(isUpdate ? [idParam] : []),
+    str('libelle', { max: 255, label: 'Libellé', optional: isUpdate }),
+    body('sens').optional().isIn(['AVOIR', 'DETTE']).withMessage('Sens invalide (AVOIR ou DETTE).'),
+    body('type').optional().isIn(['SAISIE', 'SOUS_TOTAL']).withMessage('Type invalide (SAISIE ou SOUS_TOTAL).'),
+    body('parent_id').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('Sous-total invalide.').toInt(),
+    body('ordre').optional().isInt({ min: 0, max: 100000 }).withMessage('Ordre invalide.').toInt(),
+    body('actif').optional().isBoolean({ loose: true }).withMessage('Valeur actif invalide.'),
+  ]),
+
   // ── Paramètres
   parametre: check([
     idParam,
