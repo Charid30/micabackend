@@ -2,6 +2,34 @@ const sequelize = require('../config/database');
 const { QueryTypes } = require('sequelize');
 const { RapportHebdo } = require('../models');
 const { getAutonomie } = require('./autonomie.service');
+const { getTresorerie } = require('./tresorerie.service');
+
+// Situation SONABHY / Etat, issue de la saisie Tresorerie (sous-totaux et leurs lignes de detail) :
+//  - dettes de l'Etat envers SONABHY  = sous-total CREANCES_ETAT (moins-values, subventions gaz et SONABEL...)
+//  - creances de l'Etat sur SONABHY   = sous-total DETTES_ETAT  (plus-values, droits et taxes de douane...)
+// Les lignes de detail suivent le parametrage du chef Treso (ajout / desactivation sans code).
+const CODE_DETTES_ETAT = 'CREANCES_ETAT';
+const CODE_CREANCES_ETAT = 'DETTES_ETAT';
+const situationEtat = (rapport, treso) => {
+  const bloc = (code) => {
+    const st = treso.lignes.find(l => l.code === code);
+    if (!st) return null;
+    const ligne = (l) => ({
+      libelle: l.libelle, montant: l.montant_n, montant_n1: l.montant_n1,
+      ecart: l.ecart, variation_pct: l.variation_pct, changement_signe: l.changement_signe,
+      tendance: l.tendance, favorable: l.favorable,
+    });
+    return { ...ligne(st), details: treso.lignes.filter(l => l.parent_id === st.id).map(ligne) };
+  };
+  const dettes = bloc(CODE_DETTES_ETAT);
+  const creances = bloc(CODE_CREANCES_ETAT);
+  const solde = dettes?.montant !== null && dettes?.montant !== undefined && creances?.montant !== null && creances?.montant !== undefined
+    ? dettes.montant - creances.montant : null;
+  return {
+    rapport: { semaine_iso: rapport.semaine_iso, annee: rapport.annee, date_fin: rapport.date_fin },
+    dettesEtat: dettes, creancesEtat: creances, solde,
+  };
+};
 
 const getSynthese = async () => {
   // Chercher le dernier rapport publié
@@ -18,6 +46,8 @@ const getSynthese = async () => {
       camionsCharges: 0,
       tauxRealisation: 0,
       detteEtat: 0,
+      creanceEtat: 0,
+      situationEtat: null,
       alertes: [],
       stocksInterieurs: [],
     };
@@ -42,13 +72,8 @@ const getSynthese = async () => {
     WHERE rapport_id = :rapportId AND del = 0
   `, { type: QueryTypes.SELECT, replacements: { rapportId } });
 
-  // Dette État
-  const [dette] = await sequelize.query(`
-    SELECT COALESCE(SUM(montant), 0) AS detteEtat
-    FROM finances_dettes
-    WHERE rapport_id = :rapportId
-      AND sens = 'DETTE_ETAT_VERS_SONABHY' AND del = 0
-  `, { type: QueryTypes.SELECT, replacements: { rapportId } });
+  // Situation avec l'Etat (tresorerie du rapport publie)
+  const etat = situationEtat(rapport, await getTresorerie(rapport));
 
   const charges  = parseInt(camions?.camionsCharges || 0);
   const objectif = parseInt(camions?.objectif || 0);
@@ -62,9 +87,13 @@ const getSynthese = async () => {
   return {
     autonomieMoyenneInt:  Math.round(moyenne(auto.synthese_interieure) * 10) / 10,
     autonomieMoyenneExt:  Math.round(moyenne(auto.synthese_exterieure) * 10) / 10,
+    // Rapport dont les chiffres sont affiches (dernier rapport publie)
+    rapport:              { semaine_iso: rapport.semaine_iso, annee: rapport.annee, date_debut: rapport.date_debut, date_fin: rapport.date_fin },
     camionsCharges:       charges,
     tauxRealisation:      objectif > 0 ? Math.round((charges / objectif) * 1000) / 1000 : 0,
-    detteEtat:            parseFloat(dette?.detteEtat || 0),
+    detteEtat:            etat.dettesEtat?.montant ?? 0,
+    creanceEtat:          etat.creancesEtat?.montant ?? 0,
+    situationEtat:        etat,
     alertes,
     stocksInterieurs: auto.synthese_interieure.map(s => ({
       produit:         s.produit_libelle,
