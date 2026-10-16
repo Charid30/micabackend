@@ -1,4 +1,4 @@
-const { getListe, getApercu, archiver } = require('../services/rapports.service');
+const { getListe, getApercu, archiver, supprimer } = require('../services/rapports.service');
 const { sendError } = require('../utils/http-error');
 
 exports.getListe = async (req, res) => {
@@ -42,5 +42,14 @@ exports.exportExcel = async (req, res) => {
   } catch (err) {
     console.error('[Rapports] GET export-excel :', err.message);
     sendError(res, err);
+  }
+};
+
+exports.supprimer = async (req, res) => {
+  try {
+    res.json(await supprimer(req.params.id, req.user.id));
+  } catch (err) {
+    console.error('[Rapports] DELETE :', err.message);
+    sendError(res, err, 400);
   }
 };

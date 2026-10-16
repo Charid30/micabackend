@@ -7,33 +7,47 @@ const { Op } = require('sequelize');
 
 let schedulerTask = null;
 
+// Heure de publication lue dans l'expression cron (« s m h ... » ou « m h ... ») ; 06:00 par defaut
+const heurePublication = (expression) => {
+  const champs = String(expression).trim().split(/\s+/);
+  const [m, h] = champs.length >= 6 ? [champs[1], champs[2]] : [champs[0], champs[1]];
+  const num = (v, def) => (/^\d+$/.test(v) ? Number(v) : def);
+  return { heure: num(h, 6), minute: num(m, 0) };
+};
+
+/**
+ * Publie tous les rapports BROUILLON dont l'heure de publication est passee (du plus ancien au plus recent).
+ * Un cycle se termine le jeudi ; il est publie le vendredi a l'heure du planificateur.
+ * Appelee par le planificateur et au demarrage du serveur : un vendredi manque (serveur arrete,
+ * redemarrage) est rattrape des que l'API repart, au lieu de laisser le rapport en brouillon.
+ */
 const publierRapportSemaine = async () => {
   try {
     const maintenant = new Date();
-    // Trouver le rapport de la semaine courante en BROUILLON
-    const rapport = await RapportHebdo.findOne({
-      where: {
-        statut: 'BROUILLON',
-        date_fin: { [Op.lte]: maintenant },
-        del: 0,
-      },
-      order: [['date_fin', 'DESC']],
-    });
+    const aujourdhui = maintenant.toISOString().split('T')[0];      // Ouagadougou = UTC+0
+    const hier = new Date(maintenant.getTime() - 86400000).toISOString().split('T')[0];
+    const { heure, minute } = heurePublication(await getCronExpression());
+    const heureAtteinte = maintenant.getUTCHours() * 60 + maintenant.getUTCMinutes() >= heure * 60 + minute;
 
-    if (!rapport) {
+    const rapports = await RapportHebdo.findAll({
+      where: { statut: 'BROUILLON', date_fin: { [Op.lt]: aujourdhui }, del: 0 },
+      order: [['date_fin', 'ASC']],
+    });
+    // Le cycle termine hier n'est publie qu'a partir de l'heure prevue
+    const aPublier = rapports.filter(r => r.date_fin !== hier || heureAtteinte);
+
+    if (!aPublier.length) {
       console.log(`[Scheduler] Aucun rapport à publier pour ${maintenant.toISOString()}`);
-      return;
+      return [];
     }
-
-    await rapport.update({
-      statut: 'PUBLIE',
-      date_publication: maintenant,
-      updated_at: maintenant,
-    });
-
-    console.log(`[Scheduler] Rapport semaine ${rapport.semaine_iso}/${rapport.annee} publié.`);
+    for (const rapport of aPublier) {
+      await rapport.update({ statut: 'PUBLIE', date_publication: maintenant, updated_at: maintenant });
+      console.log(`[Scheduler] Rapport semaine ${rapport.semaine_iso}/${rapport.annee} (au ${rapport.date_fin}) publié.`);
+    }
+    return aPublier;
   } catch (err) {
     console.error('[Scheduler] Erreur lors de la publication :', err.message);
+    return [];
   }
 };
 
@@ -54,6 +68,8 @@ const startScheduler = async () => {
   });
 
   console.log(`[Scheduler] Démarré avec l'expression : ${expression}`);
+  // Rattrapage : publications manquees pendant que le serveur etait arrete
+  await publierRapportSemaine();
 };
 
 const restartScheduler = async () => {

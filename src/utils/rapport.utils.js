@@ -1,72 +1,54 @@
 const { RapportHebdo } = require('../models');
 
+const JOUR = 86400000;
+const iso = (d) => d.toISOString().split('T')[0];
+
+// Numero de semaine ISO (et annee ISO) d'une date, calcule en UTC (Ouagadougou = UTC+0)
 function getISOWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-}
-
-// Cycle métier vendredi → jeudi :
-//   debut = lundi de la semaine ISO - 3 j  (= vendredi précédent)
-//   fin   = lundi de la semaine ISO + 3 j  (= jeudi de cette semaine)
-// Exemple sem. 39 : lundi 21/09 → debut 18/09, fin 24/09
-// Exemple sem. 40 : lundi 28/09 → debut 25/09, fin 01/10
-function getISOWeekDates(date) {
-  const d = new Date(date);
-  const day = d.getUTCDay() || 7; // 1=Lun … 7=Dim
-  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day + 1));
-  const debut = new Date(monday);
-  debut.setUTCDate(monday.getUTCDate() - 3);
-  const fin = new Date(monday);
-  fin.setUTCDate(monday.getUTCDate() + 3);
-  return { debut: debut.toISOString().split('T')[0], fin: fin.toISOString().split('T')[0] };
+  return { semaine: Math.ceil(((d - yearStart) / JOUR + 1) / 7), annee: d.getUTCFullYear() };
 }
 
 /**
- * Retourne (ou crée) le rapport BROUILLON pour la saisie.
- *
- * Règle métier (cycle vendredi→jeudi) :
- *   Dès que le rapport de la semaine ISO courante est PUBLIE,
- *   la saisie passe à la semaine suivante — quel que soit le jour.
- *   La nouvelle semaine démarre le vendredi de la semaine ISO suivante.
+ * Cycle metier vendredi -> jeudi contenant la date.
+ *   debut = vendredi le plus recent (la date elle-meme si c'est un vendredi), fin = jeudi suivant
+ *   numero = semaine ISO du lundi du cycle (debut + 3 j)
+ * Exemple : vendredi 09/10/2026 -> jeudi 15/10/2026 = semaine 42 (lundi 12/10)
+ * Le cycle ne depend que de la date : une saisie du vendredi, samedi ou dimanche va toujours
+ * dans le nouveau cycle, que la publication du vendredi ait eu lieu ou non.
+ */
+function cycleDe(date) {
+  const jour = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const recul = (jour.getUTCDay() - 5 + 7) % 7;           // jours depuis le vendredi
+  const debut = new Date(jour.getTime() - recul * JOUR);
+  const fin = new Date(debut.getTime() + 6 * JOUR);
+  const { semaine, annee } = getISOWeek(new Date(debut.getTime() + 3 * JOUR));
+  return { annee, semaine, debut: iso(debut), fin: iso(fin) };
+}
+
+/**
+ * Retourne (ou cree) le rapport BROUILLON du cycle en cours pour la saisie.
+ * Si le rapport du cycle en cours a deja ete publie (archivage anticipe), la saisie passe au cycle suivant.
  */
 const getOrCreateRapportSemaine = async (userId) => {
-  const now = new Date();
-  const annee = now.getUTCFullYear();
-  const semaine = getISOWeek(now);
-  const { debut, fin } = getISOWeekDates(now);
-
-  // Si le rapport de la semaine ISO courante est déjà PUBLIE,
-  // ouvrir la semaine suivante (vendredi→jeudi), peu importe le jour actuel.
-  const rapportCourant = await RapportHebdo.findOne({
-    where: { annee, semaine_iso: semaine, del: 0 },
-  });
-
-  if (rapportCourant && rapportCourant.statut === 'PUBLIE') {
-    const currentDay = now.getUTCDay() || 7; // 1=Lun … 7=Dim
-    const nextMonday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    nextMonday.setUTCDate(nextMonday.getUTCDate() + (8 - currentDay)); // prochain lundi
-    const nextAnnee   = nextMonday.getUTCFullYear();
-    const nextSemaine = getISOWeek(nextMonday);
-    const { debut: nextDebut, fin: nextFin } = getISOWeekDates(nextMonday);
-
-    const [rapport, created] = await RapportHebdo.findOrCreate({
-      where: { annee: nextAnnee, semaine_iso: nextSemaine, del: 0 },
-      defaults: { annee: nextAnnee, semaine_iso: nextSemaine, date_debut: nextDebut, date_fin: nextFin, statut: 'BROUILLON', created_by: userId },
-    });
-    // Corriger les dates si le rapport existait avec un ancien calcul
-    if (!created && (rapport.date_debut !== nextDebut || rapport.date_fin !== nextFin)) {
-      await rapport.update({ date_debut: nextDebut, date_fin: nextFin });
-    }
-    return rapport;
+  let cycle = cycleDe(new Date());
+  for (let i = 0; i < 4; i++) {
+    const existant = await RapportHebdo.findOne({ where: { annee: cycle.annee, semaine_iso: cycle.semaine, del: 0 } });
+    if (!existant || existant.statut !== 'PUBLIE') break;
+    cycle = cycleDe(new Date(Date.parse(cycle.fin) + JOUR));
   }
 
-  const [rapport] = await RapportHebdo.findOrCreate({
-    where: { annee, semaine_iso: semaine, del: 0 },
-    defaults: { annee, semaine_iso: semaine, date_debut: debut, date_fin: fin, statut: 'BROUILLON', created_by: userId },
+  const [rapport, created] = await RapportHebdo.findOrCreate({
+    where: { annee: cycle.annee, semaine_iso: cycle.semaine, del: 0 },
+    defaults: { annee: cycle.annee, semaine_iso: cycle.semaine, date_debut: cycle.debut, date_fin: cycle.fin, statut: 'BROUILLON', created_by: userId },
   });
+  // Corriger les dates d'un rapport cree par un ancien calcul
+  if (!created && rapport.statut === 'BROUILLON' && (rapport.date_debut !== cycle.debut || rapport.date_fin !== cycle.fin)) {
+    await rapport.update({ date_debut: cycle.debut, date_fin: cycle.fin });
+  }
   return rapport;
 };
 
-module.exports = { getOrCreateRapportSemaine };
+module.exports = { getOrCreateRapportSemaine, cycleDe };

@@ -137,4 +137,13 @@ const archiver = async (rapportId, userId) => {
   return { message: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} archivé.` };
 };
 
-module.exports = { getListe, getApercu, archiver };
+// Suppression logique d'un rapport (brouillon ou publie), reservee a l'administrateur.
+// Les donnees saisies restent en base (rattachees au rapport supprime) et ne sont plus affichees.
+const supprimer = async (rapportId, userId) => {
+  const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
+  if (!rapport) throw { status: 404, message: 'Rapport introuvable.' };
+  await rapport.update({ del: 1, deleted_at: new Date(), deleted_by: userId, updated_by: userId, updated_at: new Date() });
+  return { message: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} supprimé.` };
+};
+
+module.exports = { getListe, getApercu, archiver, supprimer };

@@ -13,4 +13,8 @@ router.get('/:id/export-excel', v.idParam, controller.exportExcel);
 // Archivage : réservé aux utilisateurs avec permission WRITE sur rapports
 router.post('/:id/archiver', authorize('rapports', 'WRITE'), controller.archiver);
 
+// Suppression (brouillon ou publie) : administrateurs uniquement
+const adminSeulement = (req, res, next) => (req.user?.is_admin ? next() : res.status(403).json({ message: 'Accès réservé aux administrateurs.' }));
+router.delete('/:id', adminSeulement, v.idParam, controller.supprimer);
+
 module.exports = router;
