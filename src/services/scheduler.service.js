@@ -1,3 +1,12 @@
+/* ==================================================================
+ *  Auteur : BATIONO Ulrich Rachid Kévin
+ *           Expert en Sécurité Informatique
+ *           Développeur FullStack
+ *           Tel: +226 51 57 82 89 // 66 72 02 32
+ *           Whatsapp: +226 51 57 82 89
+ *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
+ *  Projet : MICA – SONABHY
+ * ================================================================== */
 // Publication automatique du rapport hebdomadaire (expression cron stockee dans la table parametres,
 // cle PUBLICATION_CRON). L'appel cron.schedule(expression, fonction, { timezone }) est compatible
 // avec node-cron 3 et 4 : ne pas utiliser l'option "scheduled", supprimee dans la version 4.

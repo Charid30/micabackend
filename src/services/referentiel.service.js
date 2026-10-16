@@ -1,3 +1,12 @@
+/* ==================================================================
+ *  Auteur : BATIONO Ulrich Rachid Kévin
+ *           Expert en Sécurité Informatique
+ *           Développeur FullStack
+ *           Tel: +226 51 57 82 89 // 66 72 02 32
+ *           Whatsapp: +226 51 57 82 89
+ *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
+ *  Projet : MICA – SONABHY
+ * ================================================================== */
 // Referentiel des stocks : valeurs "figees", revues periodiquement, historisees par date d'effet.
 //  - impompable et consommation moyenne par depot interieur x produit
 //      droit "impompable" (responsables de depot), eventuellement limite a un depot

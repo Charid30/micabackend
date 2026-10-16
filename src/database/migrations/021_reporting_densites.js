@@ -1,3 +1,12 @@
+/* ==================================================================
+ *  Auteur : BATIONO Ulrich Rachid Kévin
+ *           Expert en Sécurité Informatique
+ *           Développeur FullStack
+ *           Tel: +226 51 57 82 89 // 66 72 02 32
+ *           Whatsapp: +226 51 57 82 89
+ *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
+ *  Projet : MICA – SONABHY
+ * ================================================================== */
 // Rapport au format du document REPORTING (Word de la direction)
 //  - produits.densite_t_m3        : densite a 15 °C, pour convertir en litres les quantites achetees en tonnes
 //                                   (encours de livraison) ; modifiable dans le referentiel par la DSTA.

@@ -1,3 +1,12 @@
+/* ==================================================================
+ *  Auteur : BATIONO Ulrich Rachid Kévin
+ *           Expert en Sécurité Informatique
+ *           Développeur FullStack
+ *           Tel: +226 51 57 82 89 // 66 72 02 32
+ *           Whatsapp: +226 51 57 82 89
+ *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
+ *  Projet : MICA – SONABHY
+ * ================================================================== */
 // Export Excel d'un rapport hebdomadaire, au format du classeur de reference Indicateurs.xlsx :
 //  - onglet « Autonomie » : depots interieurs, synthese interieure, depots exterieurs, synthese exterieure
 //  - onglet « Treso »     : situation de la tresorerie (N, N-1, variation, tendance)

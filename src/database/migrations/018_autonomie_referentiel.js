@@ -1,3 +1,12 @@
+/* ==================================================================
+ *  Auteur : BATIONO Ulrich Rachid Kévin
+ *           Expert en Sécurité Informatique
+ *           Développeur FullStack
+ *           Tel: +226 51 57 82 89 // 66 72 02 32
+ *           Whatsapp: +226 51 57 82 89
+ *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
+ *  Projet : MICA – SONABHY
+ * ================================================================== */
 // Autonomie des stocks (onglet "Autonomie" du fichier Indicateurs.xlsx)
 //  - referentiels_stock    : impompable et consommation moyenne par depot x produit (valeurs "figees",
 //                            revues une fois par an), avec date d'effet pour conserver l'historique ;

@@ -1,3 +1,12 @@
+/* ==================================================================
+ *  Auteur : BATIONO Ulrich Rachid Kévin
+ *           Expert en Sécurité Informatique
+ *           Développeur FullStack
+ *           Tel: +226 51 57 82 89 // 66 72 02 32
+ *           Whatsapp: +226 51 57 82 89
+ *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
+ *  Projet : MICA – SONABHY
+ * ================================================================== */
 // Saisie quotidienne des stocks (stock en bacs, stock en embranchement) et des actions entreprises.
 // L'impompable et la consommation moyenne ne sont plus saisis ici : ce sont des valeurs de reference
 // (voir referentiel.service.js). Tous les calculs viennent de autonomie.service.js.
