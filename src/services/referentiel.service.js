@@ -70,6 +70,9 @@ const getReferentiel = async (user) => {
     parametres: { seuil_rouge_jours: params.seuilRouge, couverture_objectif_pct: params.couvertureObjectif, densite_gaz: params.densiteGaz },
     depots_interieurs: depots.filter(d => d.type === 'INTERIEUR').map(d => ({ depot_id: d.id, depot_code: d.code, depot_libelle: d.libelle, lignes: produits.map(p => ligne(d, p)) })),
     depots_exterieurs: depots.filter(d => d.type === 'EXTERIEUR').map(d => ({ depot_id: d.id, depot_code: d.code, depot_libelle: d.libelle, pays: d.pays, lignes: produits.map(p => ligne(d, p)) })),
+    // Densite a 15 °C : conversion en litres des quantites achetees en tonnes (encours de livraison)
+    densites: produits.map(p => ({ produit_id: p.id, produit_code: p.code, produit_libelle: p.libelle,
+      densite: p.densite_t_m3 === null ? null : num(p.densite_t_m3), en_kg: p.code === 'GAZ' })),
     besoins: produits.map(p => ({ produit_id: p.id, produit_code: p.code, produit_libelle: p.libelle,
       besoin_journalier: besoinIdx[p.id] ? num(besoinIdx[p.id].besoin_journalier) : 0, date_effet: besoinIdx[p.id]?.date_effet || null })),
     historique,
@@ -145,4 +148,17 @@ const saveParametres = async (user, { seuil_rouge_jours, couverture_objectif_pct
   return { message: 'Paramètres de calcul enregistrés.' };
 };
 
-module.exports = { getReferentiel, saveDepots, saveBesoins, saveParametres };
+const saveDensites = async (user, densites) => {
+  if (!droitsDe(user).exterieur) throw { status: 403, message: 'Accès refusé : droit « Référentiel stocks » requis.' };
+  let modifiees = 0;
+  for (const d of densites) {
+    const produit = await Produit.findOne({ where: { id: d.produit_id, del: 0 } });
+    if (!produit || produit.code === 'GAZ') continue;       // gaz : tonnes exprimees en kg, pas de densite
+    if (produit.densite_t_m3 !== null && num(produit.densite_t_m3) === num(d.densite)) continue;
+    await produit.update({ densite_t_m3: d.densite, updated_by: user.id, updated_at: new Date() });
+    modifiees++;
+  }
+  return { message: modifiees ? `${modifiees} densité(s) enregistrée(s).` : 'Aucune modification.' };
+};
+
+module.exports = { getReferentiel, saveDepots, saveBesoins, saveParametres, saveDensites };

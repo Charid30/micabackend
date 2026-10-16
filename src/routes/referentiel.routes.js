@@ -23,4 +23,8 @@ router.put('/parametres', ecriture, v.referentielParametres, async (req, res) =>
   try { res.json(await svc.saveParametres(req.user, req.body)); } catch (e) { sendError(res, e, 400); }
 });
 
+router.put('/densites', ecriture, v.referentielDensites, async (req, res) => {
+  try { res.json(await svc.saveDensites(req.user, req.body.densites)); } catch (e) { sendError(res, e, 400); }
+});
+
 module.exports = router;

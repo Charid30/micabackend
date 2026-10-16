@@ -7,6 +7,7 @@ const ExcelJS = require('exceljs');
 const { RapportHebdo } = require('../models');
 const { getAutonomie } = require('./autonomie.service');
 const { getTresorerie } = require('./tresorerie.service');
+const { getReporting } = require('./reporting.service');
 
 const VERT_SONABHY = 'FF116810';
 const GRIS = 'FFF2F2F2';
@@ -302,16 +303,144 @@ function feuilleTresorerie(wb, rapport, t) {
   ws.pageSetup = { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
 }
 
+// ─────────────────────────────── Onglet Reporting (document REPORTING de la direction)
+const nbFr = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n).replace(/ | /g, ' ');
+const jj = (n) => String(Math.abs(n)).padStart(2, '0');
+const pluriel = (n) => (Math.abs(n) > 1 ? 's' : '');
+const ligneStock = (s) => (s.sans_bac
+  ? `${s.produit} : 00 (la SONABHY ne dispose pas de bac dédié)`
+  : `${s.produit} : ${nbFr(s.quantite)} ${s.unite}${s.jours === null ? '' : ` soit ${s.jours < 0 ? '-' : ''}${jj(s.jours)} jour${pluriel(s.jours)}`}`);
+const ligneEvolution = (s) => {
+  if (s.evolution_jours === null) return null;
+  if (s.evolution_jours === 0) return `${s.produit} : stable`;
+  return `${s.produit} : en ${s.evolution_jours > 0 ? 'hausse' : 'baisse'} de ${jj(s.evolution_jours)} jour${pluriel(s.evolution_jours)}`;
+};
+const jjmmaaaa = (d) => { const [a, m, j] = String(d).split('-'); return `${j}/${m}/${a}`; };
+
+function feuilleReporting(wb, rapport, r) {
+  const ws = wb.addWorksheet('Reporting', { views: [{ showGridLines: false }] });
+  [26, 18, 18, 18, 18, 18, 18, 18].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  let n = 1;
+  const titreSection = (t) => {
+    ws.mergeCells(n, 1, n, 8);
+    const c = ws.getCell(n, 1); c.value = t; c.font = { bold: true, size: 12, color: { argb: VERT_SONABHY } };
+    n += 1;
+  };
+  const texte = (t, { gras = false, puce = false } = {}) => {
+    ws.mergeCells(n, 1, n, 8);
+    const c = ws.getCell(n, 1); c.value = puce ? `•  ${t}` : t;
+    c.font = { bold: gras }; c.alignment = { wrapText: true, vertical: 'top', indent: puce ? 1 : 0 };
+    if (t.length > 110) ws.getRow(n).height = 15 * Math.ceil(t.length / 110);
+    n += 1;
+  };
+  const colonneStock = (cell, s) => {
+    valeur(cell, ligneStock(s));
+    if (COULEURS[s.couleur]) { fill(cell, COULEURS[s.couleur].fill); cell.font = { color: { argb: COULEURS[s.couleur].font } }; }
+  };
+
+  titre(ws, 'A1:H1', `SITUATION DES STOCKS SONABHY A LA DATE DU ${jjmmaaaa(r.date)}`);
+  ws.getRow(1).height = 25.5;
+  n = 3;
+
+  titreSection('1. SITUATION DES STOCKS');
+  if (r.informations_utiles.length) {
+    texte('Informations utiles :', { gras: true });
+    r.informations_utiles.forEach(t => texte(t, { puce: true }));
+    n += 1;
+  }
+  texte('Stocks en bacs', { gras: true });
+  ws.mergeCells(n, 1, n, 4); ws.mergeCells(n, 5, n, 8);
+  entete(ws.getCell(n, 1), 'Stocks dans les dépôts intérieurs');
+  entete(ws.getCell(n, 5), 'Stocks dans les dépôts extérieurs');
+  n += 1;
+  const nb = Math.max(r.stocks.interieurs.length, r.stocks.exterieurs.length);
+  for (let i = 0; i < nb; i++) {
+    ws.mergeCells(n, 1, n, 4); ws.mergeCells(n, 5, n, 8);
+    if (r.stocks.interieurs[i]) colonneStock(ws.getCell(n, 1), r.stocks.interieurs[i]);
+    if (r.stocks.exterieurs[i]) colonneStock(ws.getCell(n, 5), r.stocks.exterieurs[i]);
+    n += 1;
+  }
+  if (r.evolution_consommations.length) {
+    ws.mergeCells(n, 1, n, 8);
+    valeur(ws.getCell(n, 1), `Évolution des consommations : ${r.evolution_consommations
+      .map(e => `${e.ecart < 0 ? 'baisse' : 'hausse'} ${e.produit.toLowerCase()} : ${nbFr(Math.abs(e.ecart))}`).join(' ; ')}`);
+    ws.getCell(n, 1).alignment = { wrapText: true };
+    n += 1;
+  }
+  const obsI = r.stocks.interieurs.map(ligneEvolution).filter(Boolean);
+  const obsE = r.stocks.exterieurs.map(ligneEvolution).filter(Boolean);
+  if (obsI.length || obsE.length) {
+    ws.mergeCells(n, 1, n, 4); ws.mergeCells(n, 5, n, 8);
+    const cI = ws.getCell(n, 1); const cE = ws.getCell(n, 5);
+    valeur(cI, `Observations : évolution de l'autonomie\n${obsI.join('\n')}`);
+    valeur(cE, `Observations : évolution de l'autonomie\n${obsE.join('\n')}`);
+    cI.alignment = { wrapText: true, vertical: 'top' }; cE.alignment = { wrapText: true, vertical: 'top' };
+    ws.getRow(n).height = 15 * (Math.max(obsI.length, obsE.length) + 1);
+    n += 1;
+  }
+  n += 1;
+
+  const e = r.encours;
+  texte(`Encours de livraison (promesses de livraison)${e.du ? ` du ${jjmmaaaa(e.du)} au ${jjmmaaaa(e.au)}` : ''}`
+    + `${e.ports.length ? ` (livraison ${e.ports.join(', ')})` : ''}`, { gras: true });
+  if (!e.lignes.some(l => l.quantite > 0)) texte('Aucune livraison attendue.', { puce: true });
+  else e.lignes.forEach(l => texte(`${l.produit} : ${l.quantite ? `${nbFr(l.quantite)} ${l.unite}${l.jours ? ` soit environ ${jj(l.jours)} jours` : ''}` : '00'}`, { puce: true }));
+  n += 1;
+
+  titreSection('2. QUANTITÉ DE PRODUITS SERVIES AUX MARKETEURS AU COURS DE LA SEMAINE');
+  entete(ws.getCell(n, 1), 'PÉRIODE');
+  r.ventes.produits.forEach((p, i) => entete(ws.getCell(n, 2 + i), p.produit));
+  n += 1;
+  r.ventes.periodes.forEach(pe => {
+    valeur(ws.getCell(n, 1), pe.libelle);
+    r.ventes.produits.forEach((p, i) => valeur(ws.getCell(n, 2 + i), pe.valeurs[p.code] || 0, FMT_ENTIER));
+    n += 1;
+  });
+  if (r.ventes.evolution) {
+    valeur(ws.getCell(n, 1), 'ÉVOLUTION', null, { gras: true });
+    r.ventes.produits.forEach((p, i) => {
+      const c = ws.getCell(n, 2 + i);
+      valeur(c, r.ventes.evolution[p.code] || 0, '+#,##0;-#,##0;0', { gras: true });
+      if (r.ventes.evolution[p.code] < 0) c.font = { bold: true, color: { argb: COULEURS.rouge.font } };
+    });
+    n += 1;
+  }
+  n += 1;
+
+  titreSection('3. DETTES');
+  const d = r.dettes;
+  [["Dettes de l'État envers SONABHY", d.dettes_etat],
+    ["Créances de l'État sur SONABHY (plus-values, fiscalité)", d.creances_etat],
+    ['Engagement fournisseurs SONABHY', d.engagement_fournisseurs]]
+    .forEach(([l, v]) => {
+      ws.mergeCells(n, 1, n, 3); valeur(ws.getCell(n, 1), l, null, { gras: true });
+      ws.mergeCells(n, 4, n, 5); valeur(ws.getCell(n, 4), v === null ? 'non renseigné' : v, '#,##0" FCFA"');
+      n += 1;
+    });
+  n += 1;
+
+  titreSection('4. DIFFICULTÉS MAJEURES');
+  if (!r.difficultes.length) texte('Néant.', { puce: true });
+  r.difficultes.forEach(t => texte(t, { puce: true }));
+  if (r.recommandations.length) {
+    n += 1;
+    titreSection('5. RECOMMANDATIONS');
+    r.recommandations.forEach(t => texte(t, { puce: true }));
+  }
+  ws.pageSetup = { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
+}
+
 const exporterRapport = async (rapportId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw { status: 404, message: 'Rapport introuvable.' };
-  const [autonomie, tresorerie] = await Promise.all([getAutonomie(rapport), getTresorerie(rapport)]);
+  const [autonomie, tresorerie, reporting] = await Promise.all([getAutonomie(rapport), getTresorerie(rapport), getReporting(rapport)]);
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'MICA – SONABHY';
   wb.created = new Date();
   // Excel recalcule les formules a l'ouverture (valeurs toujours coherentes avec les donnees saisies)
   wb.calcProperties.fullCalcOnLoad = true;
+  feuilleReporting(wb, rapport, reporting);
   feuilleAutonomie(wb, rapport, autonomie);
   feuilleTresorerie(wb, rapport, tresorerie);
   return {

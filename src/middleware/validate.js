@@ -148,6 +148,12 @@ module.exports = {
     body('densite_gaz').isFloat({ min: 0.01, max: 2 }).withMessage('Densité du gaz invalide (0,01 à 2 t/m³).').toFloat(),
   ]),
 
+  referentielDensites: check([
+    body('densites').isArray({ min: 1, max: 100 }).withMessage('Densités invalides.'),
+    body('densites.*.produit_id').isInt({ min: 1 }).withMessage('Produit invalide.').toInt(),
+    body('densites.*.densite').isFloat({ min: 0.3, max: 1.5 }).withMessage('Densité invalide (0,3 à 1,5 t/m³).').toFloat(),
+  ]),
+
   // ── Trésorerie
   saisieTresorerie: check([
     id('rapport_id', 'Rapport'),

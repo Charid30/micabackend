@@ -1,6 +1,7 @@
 const { RapportHebdo, VenteMarketeur, FinanceDette, Produit, Marketeur } = require('../models');
 const { getAutonomie, trierProduits } = require('./autonomie.service');
 const { getTresorerie } = require('./tresorerie.service');
+const { getReporting } = require('./reporting.service');
 
 const PRODUIT_LIBELLE = { SUPER91: 'Essence', PETROLE: 'Pétrole', GASOIL: 'Gasoil', DDO: 'DDO', JET_A1: 'Jet A1', FUEL_OIL: 'Fuel', GAZ: 'Gaz' };
 
@@ -122,6 +123,8 @@ const getApercu = async (rapportId) => {
     engagementFourn,
     autonomie,
     tresorerie,
+    // Contenu au format du document REPORTING (apercu, PDF, Excel)
+    reporting: await getReporting(rapport),
   };
 };
 

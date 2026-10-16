@@ -78,6 +78,7 @@ const Produit = sequelize.define('Produit', {
   code: { type: DataTypes.STRING(20), allowNull: false, unique: true },
   libelle: { type: DataTypes.STRING(100), allowNull: false },
   unite: { type: DataTypes.STRING(20), allowNull: false },
+  densite_t_m3: { type: DataTypes.DECIMAL(6, 4), allowNull: true },   // densite a 15 °C (conversion tonnes -> litres)
   ...auditFields,
 }, { tableName: 'produits', timestamps: false });
 
@@ -333,6 +334,7 @@ const TresorerieLigne = sequelize.define('TresorerieLigne', {
 const Recommandation = sequelize.define('Recommandation', {
   id:                 { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id:         { type: DataTypes.INTEGER, allowNull: false, unique: true },
+  informations_utiles: { type: DataTypes.TEXT, allowNull: true },   // rubrique « Informations utiles » du rapport
   tendance_generale:  { type: DataTypes.TEXT, allowNull: true },
   risques_majeurs:    { type: DataTypes.TEXT, allowNull: true },
   impact_sonabhy:     { type: DataTypes.TEXT, allowNull: true },

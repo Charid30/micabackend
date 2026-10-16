@@ -31,12 +31,19 @@ const situationEtat = (rapport, treso) => {
   };
 };
 
-const getSynthese = async () => {
-  // Chercher le dernier rapport publié
-  const [dernierRapport] = await sequelize.query(
-    `SELECT id FROM rapports_hebdo WHERE statut = 'PUBLIE' AND del = 0 ORDER BY date_fin DESC LIMIT 1`,
-    { type: QueryTypes.SELECT }
-  );
+// rapportIdDemande : semaine choisie dans le selecteur du tableau de bord (publiee ou en cours) ;
+// par defaut, le dernier rapport publie
+const getSynthese = async (rapportIdDemande = null) => {
+  let dernierRapport;
+  if (rapportIdDemande) {
+    dernierRapport = await RapportHebdo.findOne({ where: { id: rapportIdDemande, del: 0 }, attributes: ['id'] });
+    if (!dernierRapport) throw { status: 404, message: 'Rapport introuvable.' };
+  } else {
+    [dernierRapport] = await sequelize.query(
+      `SELECT id FROM rapports_hebdo WHERE statut = 'PUBLIE' AND del = 0 ORDER BY date_fin DESC LIMIT 1`,
+      { type: QueryTypes.SELECT }
+    );
+  }
 
   // Pas de rapport publié : retourner des zéros
   if (!dernierRapport) {
@@ -88,7 +95,9 @@ const getSynthese = async () => {
     autonomieMoyenneInt:  Math.round(moyenne(auto.synthese_interieure) * 10) / 10,
     autonomieMoyenneExt:  Math.round(moyenne(auto.synthese_exterieure) * 10) / 10,
     // Rapport dont les chiffres sont affiches (dernier rapport publie)
-    rapport:              { semaine_iso: rapport.semaine_iso, annee: rapport.annee, date_debut: rapport.date_debut, date_fin: rapport.date_fin },
+    rapport:              { id: rapport.id, semaine_iso: rapport.semaine_iso, annee: rapport.annee, date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut },
+    // Semaine non publiee : chiffres provisoires (saisie en cours)
+    provisoire:           rapport.statut !== 'PUBLIE',
     camionsCharges:       charges,
     tauxRealisation:      objectif > 0 ? Math.round((charges / objectif) * 1000) / 1000 : 0,
     detteEtat:            etat.dettesEtat?.montant ?? 0,

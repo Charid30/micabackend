@@ -15,10 +15,13 @@ router.get('/semaine-courante', authorize('recommandations', 'READ'), async (req
 
 router.post('/saisie', authorize('recommandations', 'WRITE'), async (req, res) => {
   try {
-    const { rapport_id, tendance_generale, risques_majeurs, impact_sonabhy, recommandations } = req.body;
+    const { rapport_id, informations_utiles, tendance_generale, risques_majeurs, impact_sonabhy, recommandations } = req.body;
     if (!rapport_id) return res.status(400).json({ message: 'rapport_id est requis.' });
-    res.json(await recoService.saveSaisie(rapport_id,
-      { tendance_generale, risques_majeurs, impact_sonabhy, recommandations }, req.user.id));
+    const texte = (v) => (typeof v === 'string' ? v.slice(0, 20000) : '');
+    res.json(await recoService.saveSaisie(rapport_id, {
+      informations_utiles: texte(informations_utiles), tendance_generale: texte(tendance_generale),
+      risques_majeurs: texte(risques_majeurs), impact_sonabhy: texte(impact_sonabhy), recommandations: texte(recommandations),
+    }, req.user.id));
   } catch (err) {
     sendError(res, err, 400);
   }
