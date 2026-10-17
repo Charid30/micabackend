@@ -58,6 +58,14 @@ module.exports = {
     body('nouveauMotDePasse').isString().isLength({ min: 1, max: 128 }).withMessage('Les deux mots de passe sont requis.'),
   ]),
 
+  // ── Profil (utilisateur connecte)
+  profil: check([
+    body('email').optional().isString().bail().trim().isEmail().withMessage('Adresse e-mail invalide.').isLength({ max: 150 }),
+    str('tel', { min: 0, max: 20, label: 'Téléphone', optional: true })
+      .matches(/^[0-9+ ()./-]*$/).withMessage('Téléphone : chiffres, espaces et + uniquement.'),
+    body('mot_de_passe_actuel').optional({ values: 'null' }).isString().isLength({ max: 128 }).withMessage('Mot de passe invalide.'),
+  ]),
+
   // ── Utilisateurs
   createUtilisateur: check([
     id('agent_id', 'Agent'),

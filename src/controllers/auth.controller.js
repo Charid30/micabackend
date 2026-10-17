@@ -8,6 +8,7 @@
  *  Projet : MICA – SONABHY
  * ================================================================== */
 const authService = require('../services/auth.service');
+const { contexteRequete } = require('../services/securite-compte.service');
 const { sendError } = require('../utils/http-error');
 const { COOKIE_NAME, cookieOptions } = require('../middleware/auth');
 
@@ -19,7 +20,7 @@ const setSessionCookie = (res, token) =>
 exports.login = async (req, res) => {
   const { username, password } = req.body;
   try {
-    const { token, utilisateur } = await authService.login(username.trim(), password);
+    const { token, utilisateur } = await authService.login(username.trim(), password, contexteRequete(req));
     setSessionCookie(res, token);
     // Le jeton n'est jamais exposé au JavaScript du navigateur
     res.json({ utilisateur });
@@ -35,8 +36,7 @@ exports.logout = (req, res) => {
 
 exports.me = async (req, res) => {
   try {
-    const user = await authService.getMe(req.user.id);
-    res.json({ utilisateur: user });
+    res.json({ utilisateur: await authService.getMe(req.user.id) });
   } catch (err) {
     sendError(res, err);
   }

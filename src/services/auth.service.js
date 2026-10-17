@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const jwtConfig = require('../config/jwt');
 const { Utilisateur, Agent, Direction, Entreprise, Permission, Depot } = require('../models');
+const { chargerPolitique, etatMotDePasse, journaliserConnexion } = require('./securite-compte.service');
 
 const _userIncludes = [
   {
@@ -37,7 +38,24 @@ const INVALID_CREDENTIALS = { status: 401, message: 'Identifiant ou mot de passe
 // Hash factice : le temps de réponse est le même que le compte existe ou non (pas d'énumération des comptes)
 const DUMMY_HASH = bcrypt.hashSync('compte-inexistant', 10);
 
-const login = async (identifiant, password) => {
+// Profil renvoye a l'application : le changement de mot de passe est exige a la premiere connexion
+// (must_change_password) ou a l'expiration du mot de passe (politique MOT_DE_PASSE_DUREE_JOURS)
+const profilSession = (user, politique) => {
+  const mdp = etatMotDePasse(user, politique);
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    is_admin: user.is_admin,
+    must_change_password: !!user.must_change_password || mdp.expire,
+    mot_de_passe_expire: mdp.expire && !user.must_change_password,
+    mot_de_passe: { expire_le: mdp.expire_le, jours_restants: mdp.jours_restants, rappel: mdp.rappel },
+    agent: user.agent,
+    permissions: user.permissions,
+  };
+};
+
+const login = async (identifiant, password, ctx = {}) => {
   const user = await Utilisateur.scope('withPassword').findOne({
     where: {
       del: 0,
@@ -52,6 +70,7 @@ const login = async (identifiant, password) => {
   }
 
   if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    await journaliserConnexion(user.id, false, 'Compte verrouillé', ctx);
     const minutes = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
     throw { status: 423, message: `Compte temporairement verrouillé suite à plusieurs échecs. Réessayez dans ${minutes} minute(s).` };
   }
@@ -59,6 +78,7 @@ const login = async (identifiant, password) => {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) {
     const attempts = (user.failed_login_attempts || 0) + 1;
+    await journaliserConnexion(user.id, false, attempts >= MAX_FAILED_ATTEMPTS ? 'Mot de passe incorrect (compte verrouillé)' : 'Mot de passe incorrect', ctx);
     if (attempts >= MAX_FAILED_ATTEMPTS) {
       await user.update({ failed_login_attempts: 0, locked_until: new Date(Date.now() + LOCK_DURATION_MS) });
       throw { status: 423, message: 'Trop de tentatives échouées. Compte verrouillé pendant 15 minutes.' };
@@ -67,29 +87,26 @@ const login = async (identifiant, password) => {
     throw INVALID_CREDENTIALS;
   }
 
-  if (user.failed_login_attempts || user.locked_until) {
-    await user.update({ failed_login_attempts: 0, locked_until: null });
-  }
+  await user.update({
+    failed_login_attempts: 0, locked_until: null,
+    derniere_connexion_at: new Date(), derniere_connexion_ip: ctx.ip || null,
+  });
+  await journaliserConnexion(user.id, true, null, ctx);
 
-  return {
-    token: issueToken(user),
-    utilisateur: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      is_admin: user.is_admin,
-      must_change_password: !!user.must_change_password,
-      agent: user.agent,
-      permissions: user.permissions,
-    },
-  };
+  return { token: issueToken(user), utilisateur: profilSession(user, await chargerPolitique()) };
 };
 
 const getMe = async (userId) => {
-  return Utilisateur.findOne({
-    where: { id: userId, del: 0 },
-    include: _userIncludes,
-  });
+  const user = await Utilisateur.findOne({ where: { id: userId, del: 0 }, include: _userIncludes });
+  if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
+  return profilSession(user, await chargerPolitique());
+};
+
+// Le nouveau mot de passe doit differer de l'actuel
+const verifierDifferent = async (nouveau, hashActuel) => {
+  if (await bcrypt.compare(nouveau, hashActuel)) {
+    throw { status: 400, message: "Le nouveau mot de passe doit être différent de l'actuel." };
+  }
 };
 
 function validatePasswordStrength(password) {
@@ -113,16 +130,25 @@ const changePassword = async (userId, ancienMotDePasse, nouveauMotDePasse) => {
 
   const valid = await bcrypt.compare(String(ancienMotDePasse), user.password);
   if (!valid) throw { status: 400, message: 'Ancien mot de passe incorrect.' };
+  await verifierDifferent(nouveauMotDePasse, user.password);
 
   const hash = await bcrypt.hash(nouveauMotDePasse, 10);
   const now = new Date();
   await user.update({ password: hash, password_changed_at: now, updated_by: userId, updated_at: now });
 };
 
+// Changement sans l'ancien mot de passe : reserve a la premiere connexion et au mot de passe expire.
+// En dehors de ces cas, l'ancien mot de passe est exige (sinon une session laissee ouverte suffirait
+// a s'approprier le compte).
 const forcedChangePassword = async (userId, newPassword) => {
   validatePasswordStrength(newPassword);
-  const user = await Utilisateur.findByPk(userId);
+  const user = await Utilisateur.scope('withPassword').findByPk(userId);
   if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
+  const expire = etatMotDePasse(user, await chargerPolitique()).expire;
+  if (!user.must_change_password && !expire) {
+    throw { status: 403, message: 'Utilisez « Changer mon mot de passe » depuis votre profil (ancien mot de passe requis).' };
+  }
+  await verifierDifferent(newPassword, user.password);
   const hash = await bcrypt.hash(newPassword, 10);
   const now = new Date();
   await user.update({ password: hash, must_change_password: 0, password_changed_at: now, updated_by: userId, updated_at: now });

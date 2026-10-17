@@ -10,6 +10,10 @@
 const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
 const { Utilisateur, Agent, Permission } = require('../models');
+const { chargerPolitique, etatMotDePasse } = require('../services/securite-compte.service');
+
+// Routes encore accessibles tant que le mot de passe doit etre change (premiere connexion, expiration)
+const ROUTES_MOT_DE_PASSE = ['/api/auth/me', '/api/auth/logout', '/api/auth/force-change-password', '/api/auth/change-password'];
 
 const COOKIE_NAME = 'mica_token';
 const isProd = process.env.NODE_ENV === 'production';
@@ -90,6 +94,16 @@ const authenticate = async (req, res, next) => {
       if (decoded.iat < changedAtSec) {
         return res.status(401).json({ message: 'Session expirée, veuillez vous reconnecter.' });
       }
+    }
+
+    // Premiere connexion ou mot de passe expire : seul le changement de mot de passe est autorise
+    // (controle serveur ; l'ecran redirige deja vers la page de changement)
+    const expire = etatMotDePasse(user, await chargerPolitique()).expire;
+    if ((user.must_change_password || expire) && !ROUTES_MOT_DE_PASSE.some(r => req.originalUrl.split('?')[0] === r)) {
+      return res.status(403).json({
+        code: 'MOT_DE_PASSE_A_CHANGER',
+        message: expire ? 'Votre mot de passe a expiré : changez-le pour continuer.' : 'Vous devez changer votre mot de passe pour continuer.',
+      });
     }
 
     req.user = user;

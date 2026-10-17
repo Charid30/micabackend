@@ -37,5 +37,6 @@ router.use('/dashboard', authenticate, require('./dashboard.routes'));
 router.use('/recommandations', authenticate, require('./recommandations.routes'));
 router.use('/caf-moyen', authenticate, require('./cafMoyen.routes'));
 router.use('/referentiel-stocks', authenticate, require('./referentiel.routes'));
+router.use('/profil', authenticate, require('./profil.routes'));
 
 module.exports = router;

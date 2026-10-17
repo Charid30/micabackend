@@ -62,6 +62,8 @@ const Utilisateur = sequelize.define('Utilisateur', {
   password_changed_at: { type: DataTypes.DATE, allowNull: true },
   failed_login_attempts: { type: DataTypes.INTEGER, defaultValue: 0 },
   locked_until: { type: DataTypes.DATE, allowNull: true },
+  derniere_connexion_at: { type: DataTypes.DATE, allowNull: true },
+  derniere_connexion_ip: { type: DataTypes.STRING(45), allowNull: true },
   ...auditFields,
 }, {
   tableName: 'utilisateurs',
@@ -393,6 +395,17 @@ Agent.belongsTo(Direction, { foreignKey: 'direction_id', as: 'direction' });
 Agent.hasOne(Utilisateur, { foreignKey: 'agent_id', as: 'utilisateur' });
 Utilisateur.belongsTo(Agent, { foreignKey: 'agent_id', as: 'agent' });
 
+// ── CONNEXIONS (historique des connexions reussies et echouees de chaque compte)
+const ConnexionUtilisateur = sequelize.define('ConnexionUtilisateur', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  utilisateur_id: { type: DataTypes.INTEGER, allowNull: false },
+  succes:         { type: DataTypes.TINYINT, allowNull: false },
+  motif:          { type: DataTypes.STRING(60), allowNull: true },
+  ip:             { type: DataTypes.STRING(45), allowNull: true },
+  navigateur:     { type: DataTypes.STRING(255), allowNull: true },
+  created_at:     { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+}, { tableName: 'connexions_utilisateurs', timestamps: false });
+
 Utilisateur.hasMany(Permission, { foreignKey: 'utilisateur_id', as: 'permissions' });
 Permission.belongsTo(Utilisateur, { foreignKey: 'utilisateur_id', as: 'utilisateur' });
 // Depot auquel la permission est limitee (le type sert a l'affichage du menu interieur / exterieur)
@@ -478,6 +491,7 @@ CafMoyenAchat.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
 
 module.exports = {
   sequelize,
+  ConnexionUtilisateur,
   Entreprise,
   Direction,
   Agent,
