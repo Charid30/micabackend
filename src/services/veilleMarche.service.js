@@ -11,15 +11,15 @@
 const { RapportHebdo, VeilleMarche } = require('../models');
 
 const INDICATEURS_DEF = [
-  { code: 'BRENT',         libelle: 'Brent',            unite: 'USD/baril',  source: 'Platts - Crude Oil',      frequence: 'Quotidienne' },
-  { code: 'DATED_BRENT',  libelle: 'Dated Brent',      unite: 'USD/baril',  source: 'Platts',                  frequence: 'Quotidienne' },
-  { code: 'WTI',           libelle: 'WTI',              unite: 'USD/baril',  source: 'Platts',                  frequence: 'Quotidienne' },
-  { code: 'ESSENCE_FOB',  libelle: 'Essence FOB',       unite: 'USD/tonne',  source: 'Platts Refined Products', frequence: 'Quotidienne' },
-  { code: 'GASOIL_FOB',   libelle: 'Gasoil 10 ppm FOB', unite: 'USD/tonne', source: 'Platts Refined Products', frequence: 'Quotidienne' },
-  { code: 'JET_A1',        libelle: 'Jet A1',           unite: 'USD/tonne',  source: 'Platts Aviation',         frequence: 'Quotidienne' },
-  { code: 'FUEL_OIL',      libelle: 'Fuel Oil',         unite: 'USD/tonne',  source: 'Platts Fuel Oil',         frequence: 'Quotidienne' },
-  { code: 'GPL',            libelle: 'GPL',              unite: 'USD/tonne',  source: 'Platts LPG',              frequence: 'Quotidienne' },
-  { code: 'USD_FCFA',      libelle: 'USD/FCFA',         unite: 'FCFA',       source: 'BCEAO',                   frequence: 'Quotidienne' },
+  { code: 'BRENT',         libelle: 'Brent',            unite: 'USD/baril',  source: 'Platts - Crude Oil',      frequence: 'Hebdomadaire' },
+  { code: 'DATED_BRENT',  libelle: 'Dated Brent',      unite: 'USD/baril',  source: 'Platts',                  frequence: 'Hebdomadaire' },
+  { code: 'WTI',           libelle: 'WTI',              unite: 'USD/baril',  source: 'Platts',                  frequence: 'Hebdomadaire' },
+  { code: 'ESSENCE_FOB',  libelle: 'Essence FOB',       unite: 'USD/tonne',  source: 'Platts Refined Products', frequence: 'Hebdomadaire' },
+  { code: 'GASOIL_FOB',   libelle: 'Gasoil 10 ppm FOB', unite: 'USD/tonne', source: 'Platts Refined Products', frequence: 'Hebdomadaire' },
+  { code: 'JET_A1',        libelle: 'Jet A1',           unite: 'USD/tonne',  source: 'Platts Aviation',         frequence: 'Hebdomadaire' },
+  { code: 'FUEL_OIL',      libelle: 'Fuel Oil',         unite: 'USD/tonne',  source: 'Platts Fuel Oil',         frequence: 'Hebdomadaire' },
+  { code: 'GPL',            libelle: 'GPL',              unite: 'USD/tonne',  source: 'Platts LPG',              frequence: 'Hebdomadaire' },
+  { code: 'USD_FCFA',      libelle: 'USD/FCFA',         unite: 'FCFA',       source: 'BCEAO',                   frequence: 'Hebdomadaire' },
 ];
 
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
