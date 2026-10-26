@@ -204,6 +204,7 @@ const EncoursLivraison = sequelize.define('EncoursLivraison', {
 const VenteMarketeur = sequelize.define('VenteMarketeur', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id: { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   marketeur_id: { type: DataTypes.INTEGER, allowNull: false },
   produit_id: { type: DataTypes.INTEGER, allowNull: false },
   quantite: { type: DataTypes.DECIMAL(15, 3), defaultValue: 0 },
@@ -237,6 +238,7 @@ const CamionDepot = sequelize.define('CamionDepot', {
 const TempsAttenteCamion = sequelize.define('TempsAttenteCamion', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id:      { type: DataTypes.INTEGER,     allowNull: false },
+  date_saisie:     { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   site_type:       { type: DataTypes.STRING(30),  allowNull: true },
   site_nom:        { type: DataTypes.STRING(100), allowNull: true },
   nb_camions:      { type: DataTypes.INTEGER,     defaultValue: 0 },
@@ -251,6 +253,7 @@ const TempsAttenteCamion = sequelize.define('TempsAttenteCamion', {
 const VeilleMarche = sequelize.define('VeilleMarche', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id: { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   produit: { type: DataTypes.STRING(30), allowNull: false },
   prix_semaine_n: { type: DataTypes.DECIMAL(10, 4), allowNull: false },
   prix_semaine_n1: { type: DataTypes.DECIMAL(10, 4), allowNull: false },
@@ -262,6 +265,7 @@ const VeilleMarche = sequelize.define('VeilleMarche', {
 const VeilleGeopolitique = sequelize.define('VeilleGeopolitique', {
   id:            { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id:    { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie:   { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   zone:          { type: DataTypes.STRING(100), allowNull: true },
   evenement:     { type: DataTypes.TEXT, allowNull: false },
   niveau_risque: { type: DataTypes.ENUM('FAIBLE', 'MOYEN', 'ELEVE'), allowNull: true, defaultValue: null },
@@ -297,6 +301,7 @@ const AchatTrader = sequelize.define('AchatTrader', {
 const TresorerieSemaine = sequelize.define('TresorerieSemaine', {
   id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   rapport_id: { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   code:       { type: DataTypes.STRING(50), allowNull: false },
   libelle:    { type: DataTypes.STRING(255), allowNull: true },   // libelle au moment de la saisie
   montant_n1: { type: DataTypes.DECIMAL(20, 2), allowNull: true },
@@ -351,7 +356,8 @@ const TresorerieLigne = sequelize.define('TresorerieLigne', {
 // ── RECOMMANDATIONS
 const Recommandation = sequelize.define('Recommandation', {
   id:                 { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  rapport_id:         { type: DataTypes.INTEGER, allowNull: false, unique: true },
+  rapport_id:         { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie:        { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   informations_utiles: { type: DataTypes.TEXT, allowNull: true },   // rubrique « Informations utiles » du rapport
   tendance_generale:  { type: DataTypes.TEXT, allowNull: true },
   risques_majeurs:    { type: DataTypes.TEXT, allowNull: true },

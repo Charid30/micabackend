@@ -19,9 +19,10 @@
 // Meme contenu pour l'apercu, le PDF et l'export Excel. Les calculs d'autonomie et de tresorerie viennent
 // de autonomie.service et tresorerie.service.
 const { Op } = require('sequelize');
-const { RapportHebdo, Produit, VenteMarketeur, AchatTrader, Recommandation } = require('../models');
+const { RapportHebdo, Produit, VenteMarketeur, AchatTrader } = require('../models');
 const { getAutonomie } = require('./autonomie.service');
 const { getTresorerie } = require('./tresorerie.service');
+const { derniereValeurParRapport } = require('./frequence.service');
 
 // Ordre et libelles du document REPORTING
 const ORDRE = ['SUPER91', 'GASOIL', 'DDO', 'PETROLE', 'GAZ', 'FUEL_OIL', 'JET_A1'];
@@ -107,7 +108,8 @@ async function encours(rapport, produits, auto) {
 // ── Quantites servies aux marketeurs : semaine precedente, semaine du rapport, evolution
 async function ventes(rapport, prec, produits) {
   const ids = [rapport.id, ...(prec ? [prec.id] : [])];
-  const rows = await VenteMarketeur.findAll({ where: { del: 0, rapport_id: ids } });
+  // Derniere saisie de ventes de chaque semaine (saisie quotidienne : celle du dernier jour)
+  const rows = derniereValeurParRapport(await VenteMarketeur.findAll({ where: { del: 0, rapport_id: ids } }), null);
   const parId = Object.fromEntries(produits.map(p => [p.id, p.code]));
   const somme = (rid) => {
     const t = {}; rows.filter(r => r.rapport_id === rid).forEach(r => { const c = parId[r.produit_id]; if (c) t[c] = (t[c] || 0) + num(r.quantite); });
@@ -144,7 +146,7 @@ const getReporting = async (rapport) => {
     prec ? getAutonomie(prec) : null,
     getTresorerie(rapport),
     Produit.findAll({ where: { del: 0 } }),
-    Recommandation.findOne({ where: { rapport_id: rapport.id, del: 0 } }),
+    require('./recommandations.service').recommandationDe(rapport.id),
   ]);
   // Produits du document uniquement (les produits de test ou hors liste ne figurent pas au rapport)
   const codes = trier(produitsRaw.map(p => p.code).filter(c => ORDRE.includes(c)));

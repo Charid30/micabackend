@@ -22,25 +22,35 @@ const informationsUtiles = async (rapport, row) => {
   if (!precedents.length) return { texte: '', reprise: null };
   const lignes = await Recommandation.findAll({
     where: { del: 0, rapport_id: precedents.map(r => r.id), informations_utiles: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } },
+    order: [['date_saisie', 'DESC'], ['id', 'DESC']],
   });
   for (const r of precedents) {
-    const l = lignes.find(x => x.rapport_id === r.id);
+    const l = lignes.find(x => x.rapport_id === r.id);   // la plus recente de la semaine
     if (l) return { texte: l.informations_utiles, reprise: { semaine_iso: r.semaine_iso, annee: r.annee } };
   }
   return { texte: '', reprise: null };
 };
 
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
+const { infoSaisie, lignesSaisie, derniereValeur, ecrireLigne, frequenceDe } = require('./frequence.service');
+
+// Derniere saisie de recommandations d'un rapport (rapport, apercu)
+const recommandationDe = async (rapportId) =>
+  derniereValeur(await Recommandation.findAll({ where: { rapport_id: rapportId, del: 0 } }), () => 'unique')[0] || null;
 
 const getSaisieData = async (userId) => {
   const rapport = await getOrCreateRapportSemaine(userId);
-  const row = await Recommandation.findOne({ where: { rapport_id: rapport.id, del: 0 } });
-  const infos = await informationsUtiles(rapport, row);
+  const info = await infoSaisie('recommandations');
+  const toutes = await Recommandation.findAll({ where: { rapport_id: rapport.id, del: 0 } });
+  const row = lignesSaisie(toutes, info.frequence, () => 'unique')[0] || null;
+  // Informations utiles : derniere saisie de la semaine, sinon reprises d'une semaine precedente
+  const infos = await informationsUtiles(rapport, row || derniereValeur(toutes, () => 'unique')[0]);
   return {
     rapport: {
       id: rapport.id, annee: rapport.annee, semaine_iso: rapport.semaine_iso,
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
+    ...info,
     informations_utiles: infos.texte,
     informations_reprises_de: infos.reprise,
     tendance_generale: row?.tendance_generale || '',
@@ -55,28 +65,14 @@ const saveSaisie = async (rapportId, data, userId) => {
   if (!rapport) throw new Error('Rapport introuvable.');
   if (rapport.statut === 'PUBLIE') throw new Error('Ce rapport est déjà publié.');
 
-  const [row, created] = await Recommandation.findOrCreate({
-    where: { rapport_id: rapportId, del: 0 },
-    defaults: {
-      informations_utiles: data.informations_utiles || '',
-      tendance_generale: data.tendance_generale || '',
-      risques_majeurs:   data.risques_majeurs   || '',
-      impact_sonabhy:    data.impact_sonabhy    || '',
-      recommandations:   data.recommandations   || '',
-      created_by: userId,
-    },
-  });
-  if (!created) {
-    await row.update({
-      informations_utiles: data.informations_utiles || '',
-      tendance_generale: data.tendance_generale || '',
-      risques_majeurs:   data.risques_majeurs   || '',
-      impact_sonabhy:    data.impact_sonabhy    || '',
-      recommandations:   data.recommandations   || '',
-      updated_by: userId,
-    });
-  }
+  await ecrireLigne(Recommandation, { rapport_id: rapportId }, {
+    informations_utiles: data.informations_utiles || '',
+    tendance_generale: data.tendance_generale || '',
+    risques_majeurs:   data.risques_majeurs   || '',
+    impact_sonabhy:    data.impact_sonabhy    || '',
+    recommandations:   data.recommandations   || '',
+  }, await frequenceDe('recommandations'), userId);
   return { message: 'Recommandations enregistrées avec succès.' };
 };
 
-module.exports = { getSaisieData, saveSaisie, informationsUtiles };
+module.exports = { getSaisieData, saveSaisie, informationsUtiles, recommandationDe };

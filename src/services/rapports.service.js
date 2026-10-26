@@ -9,6 +9,7 @@
  *  Merci
  * ================================================================== */
 const { RapportHebdo, VenteMarketeur, FinanceDette, Produit, Marketeur } = require('../models');
+const { derniereValeur } = require('./frequence.service');
 const { getAutonomie, trierProduits } = require('./autonomie.service');
 const { getTresorerie } = require('./tresorerie.service');
 const { getReporting } = require('./reporting.service');
@@ -29,7 +30,7 @@ const getApercu = async (rapportId) => {
   if (!rapport) throw { status: 404, message: 'Rapport introuvable.' };
 
   // Autonomie : calcul unique (services/autonomie.service), stocks au jeudi de fin de semaine
-  const [autonomie, tresorerie, ventes, dettes, produitsRaw, marketeurs] = await Promise.all([
+  const [autonomie, tresorerie, toutesVentes, dettes, produitsRaw, marketeurs] = await Promise.all([
     getAutonomie(rapport),
     getTresorerie(rapport),
     VenteMarketeur.findAll({
@@ -44,6 +45,7 @@ const getApercu = async (rapportId) => {
     Marketeur.findAll({ where: { del: 0 }, attributes: ['id', 'code', 'libelle'], order: [['libelle', 'ASC']] }),
   ]);
 
+  const ventes = derniereValeur(toutesVentes, null);   // derniere saisie de la semaine
   const produits = trierProduits(produitsRaw);
   const produitCodes = produits.map(p => p.code);
   const densite = autonomie.parametres.densite_gaz;
@@ -142,6 +144,8 @@ const archiver = async (rapportId, userId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw new Error('Rapport introuvable.');
   if (rapport.statut === 'PUBLIE') throw new Error('Ce rapport est déjà archivé.');
+  // Valeurs permanentes non resaisies cette semaine : reprises avant la publication
+  await require('./frequence.service').reporterPermanents(rapport, userId);
   await rapport.update({
     statut: 'PUBLIE',
     date_publication: new Date(),

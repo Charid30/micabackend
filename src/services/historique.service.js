@@ -10,6 +10,7 @@
  * ================================================================== */
 const { RapportHebdo, StockDepot, ChargementCorridor, TresorerieSemaine,
         VenteMarketeur, Produit, Depot, Corridor, sequelize } = require('../models');
+const { derniereValeurParRapport } = require('./frequence.service');
 const { Op } = require('sequelize');
 
 async function getRapports(semaines) {
@@ -109,16 +110,14 @@ const getVentes = async (semaines = 12) => {
   const ids = rapports.map(r => r.id);
   const produits = await Produit.findAll({ where: { del: 0 }, order: [['libelle', 'ASC']] });
 
-  const rows = await VenteMarketeur.findAll({
+  // Derniere saisie de ventes de chaque semaine (saisie quotidienne : celle du dernier jour)
+  const rows = derniereValeurParRapport(await VenteMarketeur.findAll({
     where: { rapport_id: { [Op.in]: ids }, del: 0 },
-    attributes: ['rapport_id', 'produit_id',
-      [sequelize.fn('SUM', sequelize.col('quantite')), 'total']],
-    group: ['rapport_id', 'produit_id'],
-    raw: true,
-  });
+    attributes: ['id', 'rapport_id', 'produit_id', 'quantite', 'date_saisie'],
+  }), null);
 
   const idx = {};
-  rows.forEach(r => { idx[`${r.rapport_id}|${r.produit_id}`] = parseFloat(r.total) || 0; });
+  rows.forEach(r => { const k = `${r.rapport_id}|${r.produit_id}`; idx[k] = (idx[k] || 0) + (parseFloat(r.quantite) || 0); });
 
   const datasets = produits.map((p, i) => ({
     label: p.libelle,

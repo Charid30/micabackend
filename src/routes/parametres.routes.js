@@ -35,6 +35,9 @@ router.put('/:id', v.parametre, async (req, res) => {
     if (require('../services/securite.service').CLES_SECURITE.includes(p.cle)) {
       return res.status(403).json({ message: 'Réglage de sécurité : modifiable par un administrateur dans Paramètres > Sécurité.' });
     }
+    if (p.cle.startsWith('FREQUENCE_')) {
+      return res.status(400).json({ message: 'Fréquence de saisie : modifiable dans Paramètres > Fréquences de saisie.' });
+    }
     await p.update({ valeur: req.body.valeur });
     res.json(p);
   } catch (e) { sendError(res, e, 400); }

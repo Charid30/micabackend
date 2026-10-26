@@ -219,10 +219,12 @@ async function chargerReferentiels(dateRef) {
 // Stocks d'un rapport : derniere saisie datee <= dateStock pour chaque depot x produit
 // (dateStock = jour de saisie, ou jeudi de fin de semaine pour le rapport).
 // Anciens rapports sans saisie datee : valeur unique de la semaine (ancien fonctionnement).
-// jourExact : uniquement la saisie de ce jour (ecran de saisie quotidienne)
+// jourExact : uniquement la saisie de ce jour (ecran de saisie quotidienne) ; booleen, ou fonction
+//             (depot_id) => booleen quand la frequence differe entre depots interieurs et exterieurs
 async function chargerStocks(rapportId, dateStock, { jourExact = false } = {}) {
+  const exact = typeof jourExact === 'function' ? jourExact : () => jourExact;
   const rows = await StockDepot.findAll({ where: { rapport_id: rapportId, del: 0 } });
-  const dated = rows.filter(r => r.date_saisie !== null && (jourExact ? r.date_saisie === dateStock : r.date_saisie <= dateStock))
+  const dated = rows.filter(r => r.date_saisie !== null && (exact(r.depot_id) ? r.date_saisie === dateStock : r.date_saisie <= dateStock))
     .sort((a, b) => String(b.date_saisie).localeCompare(String(a.date_saisie)));
   const stocks = {};
   for (const r of dated) {
@@ -233,8 +235,8 @@ async function chargerStocks(rapportId, dateStock, { jourExact = false } = {}) {
     stocks[k] = bacs || embr ? { bacs, embranchement: embr, date_saisie: r.date_saisie }
       : { bacs: num(r.stock_disponible), embranchement: 0, date_saisie: r.date_saisie };
   }
-  if (!jourExact) {
-    for (const r of rows.filter(x => x.date_saisie === null)) {
+  {
+    for (const r of rows.filter(x => x.date_saisie === null && !exact(x.depot_id))) {
       const k = key(r.depot_id, r.produit_id);
       if (!stocks[k] && num(r.stock_disponible)) stocks[k] = { bacs: num(r.stock_disponible), embranchement: 0, date_saisie: null };
     }
@@ -246,7 +248,7 @@ async function chargerStocks(rapportId, dateStock, { jourExact = false } = {}) {
  * Autonomie d'un rapport.
  * @param rapport     instance RapportHebdo
  * @param dateStock   date des stocks a retenir (AAAA-MM-JJ) ; par defaut le jeudi de fin de semaine
- * @param jourExact   true pour l'ecran de saisie (stocks du jour uniquement)
+ * @param jourExact   true pour l'ecran de saisie (stocks du jour uniquement), ou fonction (depot_id) => booleen
  * @param depotIds    restreint les depots (droits limites a un depot)
  */
 async function getAutonomie(rapport, { dateStock = null, jourExact = false, depotIds = null } = {}) {

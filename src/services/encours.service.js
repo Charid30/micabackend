@@ -10,6 +10,9 @@
  * ================================================================== */
 const { RapportHebdo, CamionDepot, Depot, Produit } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
+const { frequenceDe, lignesSaisie, ecrireLigne } = require('./frequence.service');
+
+const cleLigne = (r) => `${r.depot_id}_${r.produit_id}`;
 
 const PRODUIT_ORDER = ['SUPER91', 'PETROLE', 'GASOIL', 'DDO', 'JET_A1', 'GAZ', 'FUEL_OIL'];
 
@@ -25,12 +28,11 @@ const getSaisieData = async (userId) => {
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
   });
 
-  // Données du jour uniquement
-  const camions = await CamionDepot.findAll({
-    where: { rapport_id: rapport.id, date_saisie: today, del: 0 },
-  });
+  // Quotidien : donnees du jour ; hebdomadaire / permanent : derniere saisie de la semaine
+  const frequence = await frequenceDe('depots-int');
+  const camions = lignesSaisie(await CamionDepot.findAll({ where: { rapport_id: rapport.id, del: 0 } }), frequence, cleLigne);
   const idx = {};
-  camions.forEach(c => { idx[`${c.depot_id}_${c.produit_id}`] = c; });
+  camions.forEach(c => { idx[cleLigne(c)] = c; });
 
   return {
     rapport: {
@@ -38,6 +40,7 @@ const getSaisieData = async (userId) => {
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
     date_saisie: today,
+    frequence,
     depots: depotsRaw.map(dep => ({
       depot_id:      dep.id,
       depot_code:    dep.code,
@@ -63,7 +66,7 @@ const saveSaisie = async (rapportId, depotsData, userId) => {
   if (!rapport) throw new Error('Rapport introuvable.');
   if (rapport.statut === 'PUBLIE') throw new Error('Ce rapport est déjà publié.');
 
-  const today = new Date().toISOString().split('T')[0];
+  const frequence = await frequenceDe('depots-int');
 
   for (const depot of depotsData) {
     for (const ligne of depot.lignes) {
@@ -71,18 +74,8 @@ const saveSaisie = async (rapportId, depotsData, userId) => {
       const recus     = parseInt(ligne.camions_recus)      || 0;
       const depotes   = parseInt(ligne.camions_depotes)    || 0;
 
-      const row = await CamionDepot.findOne({
-        where: { rapport_id: rapportId, depot_id: depot.depot_id, produit_id: ligne.produit_id, date_saisie: today, del: 0 },
-      });
-      if (row) {
-        await row.update({ camions_en_attente: enAttente, camions_recus: recus, camions_depotes: depotes, updated_by: userId });
-      } else {
-        await CamionDepot.create({
-          rapport_id: rapportId, depot_id: depot.depot_id, produit_id: ligne.produit_id,
-          date_saisie: today, camions_en_attente: enAttente, camions_recus: recus, camions_depotes: depotes,
-          del: 0, created_by: userId,
-        });
-      }
+      await ecrireLigne(CamionDepot, { rapport_id: rapportId, depot_id: depot.depot_id, produit_id: ligne.produit_id },
+        { camions_en_attente: enAttente, camions_recus: recus, camions_depotes: depotes }, frequence, userId);
     }
   }
   return { message: 'Saisie dépôts intérieurs enregistrée avec succès.' };

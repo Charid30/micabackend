@@ -58,6 +58,9 @@ const getOrCreateRapportSemaine = async (userId) => {
   if (!created && rapport.statut === 'BROUILLON' && (rapport.date_debut !== cycle.debut || rapport.date_fin !== cycle.fin)) {
     await rapport.update({ date_debut: cycle.debut, date_fin: cycle.fin });
   }
+  // Menus en frequence permanente : valeurs de la semaine precedente reprises si rien n'est encore saisi
+  try { await require('../services/frequence.service').reporterPermanents(rapport, userId); }
+  catch (e) { console.error('[Frequences] Report des valeurs permanentes :', e.message); }
   return rapport;
 };
 

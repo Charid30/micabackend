@@ -10,6 +10,9 @@
  * ================================================================== */
 const { RapportHebdo, ChargementCorridor, Corridor, Produit } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
+const { frequenceDe, lignesSaisie, ecrireLigne } = require('./frequence.service');
+
+const cleLigne = (r) => `${r.corridor_id}_${r.produit_id}`;
 
 const PRODUIT_ORDER = ['SUPER91', 'PETROLE', 'GASOIL', 'DDO', 'JET_A1', 'GAZ', 'FUEL_OIL'];
 
@@ -25,12 +28,11 @@ const getSaisieData = async (userId) => {
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
   });
 
-  // Données du jour uniquement
-  const chargements = await ChargementCorridor.findAll({
-    where: { rapport_id: rapport.id, date_saisie: today, del: 0 },
-  });
+  // Quotidien : donnees du jour ; hebdomadaire / permanent : derniere saisie de la semaine
+  const frequence = await frequenceDe('corridors');
+  const chargements = lignesSaisie(await ChargementCorridor.findAll({ where: { rapport_id: rapport.id, del: 0 } }), frequence, cleLigne);
   const idx = {};
-  chargements.forEach(c => { idx[`${c.corridor_id}_${c.produit_id}`] = c; });
+  chargements.forEach(c => { idx[cleLigne(c)] = c; });
 
   return {
     rapport: {
@@ -38,6 +40,7 @@ const getSaisieData = async (userId) => {
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
     date_saisie: today,
+    frequence,
     corridors: corridors.map(cor => ({
       corridor_id:      cor.id,
       corridor_code:    cor.code,
@@ -64,7 +67,7 @@ const saveSaisie = async (rapportId, corridorsData, userId) => {
   if (!rapport) throw new Error('Rapport introuvable.');
   if (rapport.statut === 'PUBLIE') throw new Error('Ce rapport est déjà publié.');
 
-  const today = new Date().toISOString().split('T')[0];
+  const frequence = await frequenceDe('corridors');
 
   for (const corridor of corridorsData) {
     for (const ligne of corridor.lignes) {
@@ -73,18 +76,8 @@ const saveSaisie = async (rapportId, corridorsData, userId) => {
       const bonsEmis  = parseInt(ligne.bons_emis)             || 0;
       const objectif  = parseInt(ligne.objectif_journalier)   || 0;
 
-      const row = await ChargementCorridor.findOne({
-        where: { rapport_id: rapportId, corridor_id: corridor.corridor_id, produit_id: ligne.produit_id, date_saisie: today, del: 0 },
-      });
-      if (row) {
-        await row.update({ camions_en_attente: enAttente, camions_charges: charges, bons_emis: bonsEmis, objectif_journalier: objectif, updated_by: userId });
-      } else {
-        await ChargementCorridor.create({
-          rapport_id: rapportId, corridor_id: corridor.corridor_id, produit_id: ligne.produit_id,
-          date_saisie: today, camions_en_attente: enAttente, camions_charges: charges,
-          bons_emis: bonsEmis, objectif_journalier: objectif, del: 0, created_by: userId,
-        });
-      }
+      await ecrireLigne(ChargementCorridor, { rapport_id: rapportId, corridor_id: corridor.corridor_id, produit_id: ligne.produit_id },
+        { camions_en_attente: enAttente, camions_charges: charges, bons_emis: bonsEmis, objectif_journalier: objectif }, frequence, userId);
     }
   }
   return { message: 'Saisie corridors enregistrée avec succès.' };

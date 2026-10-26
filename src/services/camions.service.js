@@ -49,19 +49,24 @@ const SECTIONS_DEF = [
 ];
 
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
+const { infoSaisie, lignesSaisie, ecrireLigne, frequenceDe } = require('./frequence.service');
+
+const cleLigne = (r) => `${r.site_type}|${r.site_nom}`;
 
 const getSaisieData = async (userId) => {
   const rapport = await getOrCreateRapportSemaine(userId);
 
-  const rows = await TempsAttenteCamion.findAll({ where: { rapport_id: rapport.id, del: 0 } });
+  const info = await infoSaisie('temps-attente');
+  const rows = lignesSaisie(await TempsAttenteCamion.findAll({ where: { rapport_id: rapport.id, del: 0 } }), info.frequence, cleLigne);
   const idx = {};
-  rows.forEach(r => { idx[`${r.site_type}|${r.site_nom}`] = r; });
+  rows.forEach(r => { idx[cleLigne(r)] = r; });
 
   return {
     rapport: {
       id: rapport.id, annee: rapport.annee, semaine_iso: rapport.semaine_iso,
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
+    ...info,
     sections: SECTIONS_DEF.map(sec => ({
       site_type:      sec.site_type,
       titre:          sec.titre,
@@ -86,6 +91,7 @@ const saveSaisie = async (rapportId, sectionsData, userId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw new Error('Rapport introuvable.');
   if (rapport.statut === 'PUBLIE') throw new Error('Ce rapport est déjà publié.');
+  const frequence = await frequenceDe('temps-attente');
 
   for (const section of sectionsData) {
     for (const ligne of section.lignes) {
@@ -95,15 +101,8 @@ const saveSaisie = async (rapportId, sectionsData, userId) => {
         temps_mini:     ligne.temps_mini   != null ? parseFloat(ligne.temps_mini)   : null,
         temps_maxi:     ligne.temps_maxi   != null ? parseFloat(ligne.temps_maxi)   : null,
         objectif_jours: section.objectif_jours,
-        created_by:     userId,
       };
-      const [row, created] = await TempsAttenteCamion.findOrCreate({
-        where: { rapport_id: rapportId, site_type: section.site_type, site_nom: ligne.site_nom, del: 0 },
-        defaults,
-      });
-      if (!created) {
-        await row.update({ ...defaults, updated_by: userId });
-      }
+      await ecrireLigne(TempsAttenteCamion, { rapport_id: rapportId, site_type: section.site_type, site_nom: ligne.site_nom }, defaults, frequence, userId);
     }
   }
   return { message: 'Saisie temps d\'attente enregistrée avec succès.' };

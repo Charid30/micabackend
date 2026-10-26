@@ -17,6 +17,9 @@
 const { Op } = require('sequelize');
 const { RapportHebdo, TresorerieSemaine, TresorerieLigne } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
+const { infoSaisie, derniereValeur, ecrireLigne, frequenceDe } = require('./frequence.service');
+
+const parCode = (r) => r.code;
 
 const num = (v) => (v === null || v === undefined || v === '' ? null : (Number.isFinite(parseFloat(v)) ? parseFloat(v) : null));
 const signe = (l) => (l.sens === 'DETTE' ? -1 : 1);
@@ -82,12 +85,14 @@ const rapportPrecedent = (rapport) => RapportHebdo.findOne({
 });
 
 // Tableau complet de tresorerie d'un rapport (saisie, apercu, PDF, Excel)
-const getTresorerie = async (rapport) => {
+//  - valeurs N : derniere saisie de la semaine, ou saisie du jour `jour` (ecran de saisie quotidienne)
+const getTresorerie = async (rapport, { jour = null } = {}) => {
   const prec = await rapportPrecedent(rapport);
   const ids = [rapport.id, ...(prec ? [prec.id] : [])];
   const { toutes, rows } = await lignesPour(ids);
-  const rowsN = rows.filter(r => r.rapport_id === rapport.id);
-  const rowsN1 = prec ? rows.filter(r => r.rapport_id === prec.id) : [];
+  const duRapport = rows.filter(r => r.rapport_id === rapport.id);
+  const rowsN = jour ? duRapport.filter(r => r.date_saisie === jour) : derniereValeur(duRapport, parCode);
+  const rowsN1 = prec ? derniereValeur(rows.filter(r => r.rapport_id === prec.id), parCode) : [];
   const avecValeur = new Set(rowsN.filter(r => r.montant_n !== null).map(r => r.code));
   const lignes = toutes.filter(l => l.actif || avecValeur.has(l.code) || l.type === 'TOTAL');
   // Les sous-totaux desactives entrainent leurs details : on garde un detail si son parent est affiche
@@ -124,7 +129,7 @@ const totauxParRapport = async (rapportIds) => {
   const { toutes, rows } = await lignesPour(rapportIds);
   const out = {};
   for (const id of rapportIds) {
-    const val = calculerValeurs(toutes, rows.filter(r => r.rapport_id === id));
+    const val = calculerValeurs(toutes, derniereValeur(rows.filter(r => r.rapport_id === id), parCode));
     const total = toutes.find(l => l.type === 'TOTAL');
     out[id] = total ? val[total.code] : null;
   }
@@ -133,13 +138,15 @@ const totauxParRapport = async (rapportIds) => {
 
 const getSaisieData = async (user, droits) => {
   const rapport = await getOrCreateRapportSemaine(user.id);
+  const info = await infoSaisie('tresorerie');
   return {
     rapport: {
       id: rapport.id, annee: rapport.annee, semaine_iso: rapport.semaine_iso,
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
+    ...info,
     droits,
-    ...(await getTresorerie(rapport)),
+    ...(await getTresorerie(rapport, { jour: info.frequence === 'QUOTIDIEN' ? info.date_saisie : null })),
   };
 };
 
@@ -153,15 +160,14 @@ const saveSaisie = async (rapportId, lignes, user) => {
   // N-1 fige au moment de la saisie (trace de ce qui etait affiche)
   const { lignes: courant } = await getTresorerie(rapport);
   const n1 = {}; courant.forEach(l => { n1[l.code] = l.montant_n1; });
+  const frequence = await frequenceDe('tresorerie');
 
   for (const l of lignes) {
     const def = parCode[l.code];
     if (!def) continue;                       // ligne calculee, inconnue ou desactivee : ignoree
     const valeurs = { montant_n: num(l.montant_n), montant_n1: n1[l.code] ?? null, libelle: def.libelle };
     if (valeurs.montant_n !== null && valeurs.montant_n < 0) throw { status: 400, message: `« ${def.libelle} » : saisir un montant positif (le sens avoir/dette est appliqué automatiquement).` };
-    const row = await TresorerieSemaine.findOne({ where: { rapport_id: rapportId, code: l.code, del: 0 } });
-    if (row) await row.update({ ...valeurs, updated_by: user.id, updated_at: new Date() });
-    else await TresorerieSemaine.create({ rapport_id: rapportId, code: l.code, ...valeurs, created_by: user.id });
+    await ecrireLigne(TresorerieSemaine, { rapport_id: rapportId, code: l.code }, valeurs, frequence, user.id);
   }
   return { message: 'Trésorerie enregistrée avec succès.' };
 };

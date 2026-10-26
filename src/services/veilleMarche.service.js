@@ -23,11 +23,13 @@ const INDICATEURS_DEF = [
 ];
 
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
+const { infoSaisie, lignesSaisie, ecrireLigne, frequenceDe } = require('./frequence.service');
 
 const getSaisieData = async (userId) => {
   const rapport = await getOrCreateRapportSemaine(userId);
 
-  const rows = await VeilleMarche.findAll({ where: { rapport_id: rapport.id, del: 0 } });
+  const info = await infoSaisie('veille-marche');
+  const rows = lignesSaisie(await VeilleMarche.findAll({ where: { rapport_id: rapport.id, del: 0 } }), info.frequence, r => r.produit);
   const idx = {};
   rows.forEach(r => { idx[r.produit] = r; });
 
@@ -36,6 +38,7 @@ const getSaisieData = async (userId) => {
       id: rapport.id, annee: rapport.annee, semaine_iso: rapport.semaine_iso,
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
+    ...info,
     indicateurs: INDICATEURS_DEF.map(ind => {
       const row = idx[ind.code] || {};
       return {
@@ -56,17 +59,13 @@ const saveSaisie = async (rapportId, indicateurs, userId) => {
   if (!rapport) throw new Error('Rapport introuvable.');
   if (rapport.statut === 'PUBLIE') throw new Error('Ce rapport est déjà publié.');
 
+  const frequence = await frequenceDe('veille-marche');
   for (const ind of indicateurs) {
     const n1 = ind.prix_semaine_n1 != null ? parseFloat(ind.prix_semaine_n1) : null;
     const n  = ind.prix_semaine_n  != null ? parseFloat(ind.prix_semaine_n)  : null;
 
-    const [row, created] = await VeilleMarche.findOrCreate({
-      where: { rapport_id: rapportId, produit: ind.code, del: 0 },
-      defaults: { prix_semaine_n1: n1, prix_semaine_n: n, taux_change_usd: 0, created_by: userId },
-    });
-    if (!created) {
-      await row.update({ prix_semaine_n1: n1, prix_semaine_n: n, updated_by: userId });
-    }
+    await ecrireLigne(VeilleMarche, { rapport_id: rapportId, produit: ind.code },
+      { prix_semaine_n1: n1, prix_semaine_n: n, taux_change_usd: 0 }, frequence, userId);
   }
   return { message: 'Veille marché enregistrée avec succès.' };
 };
