@@ -10,7 +10,8 @@
 const authService = require('../services/auth.service');
 const { contexteRequete } = require('../services/securite-compte.service');
 const { sendError } = require('../utils/http-error');
-const { COOKIE_NAME, cookieOptions } = require('../middleware/auth');
+const { COOKIE_NAME, cookieOptions, readCookie } = require('../middleware/auth');
+const COOKIE_2FA = 'mica_2fa';
 
 const SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000; // aligné sur JWT_EXPIRES_IN (8h)
 
@@ -20,9 +21,27 @@ const setSessionCookie = (res, token) =>
 exports.login = async (req, res) => {
   const { username, password } = req.body;
   try {
-    const { token, utilisateur } = await authService.login(username.trim(), password, contexteRequete(req));
+    const resultat = await authService.login(username.trim(), password, contexteRequete(req));
+    if (resultat.etape2fa) {
+      // Mot de passe correct : le code de double authentification est demande (cookie temporaire, 5 min)
+      res.cookie(COOKIE_2FA, resultat.jeton2fa, { ...cookieOptions(), maxAge: 5 * 60 * 1000 });
+      return res.json({ double_auth: true });
+    }
+    const { token, utilisateur } = resultat;
     setSessionCookie(res, token);
     // Le jeton n'est jamais exposé au JavaScript du navigateur
+    res.json({ utilisateur });
+  } catch (err) {
+    sendError(res, err);
+  }
+};
+
+exports.loginDoubleAuth = async (req, res) => {
+  try {
+    const jeton = readCookie(req, COOKIE_2FA);
+    const { token, utilisateur } = await authService.loginDoubleAuth(jeton, req.body.code, contexteRequete(req));
+    res.clearCookie(COOKIE_2FA, cookieOptions());
+    setSessionCookie(res, token);
     res.json({ utilisateur });
   } catch (err) {
     sendError(res, err);

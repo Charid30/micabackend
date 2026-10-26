@@ -78,6 +78,8 @@ const authenticate = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, jwtConfig.secret, { algorithms: ['HS256'] });
+    // Jeton intermediaire de la double authentification : n'ouvre aucune session
+    if (decoded.etape) return res.status(401).json({ message: 'Token expiré ou invalide.' });
     const user = await Utilisateur.findOne({
       where: { id: decoded.id, del: 0 },
       include: [
@@ -104,6 +106,15 @@ const authenticate = async (req, res, next) => {
         code: 'MOT_DE_PASSE_A_CHANGER',
         message: expire ? 'Votre mot de passe a expiré : changez-le pour continuer.' : 'Vous devez changer votre mot de passe pour continuer.',
       });
+    }
+
+    // Administrateur sans double authentification (obligatoire) : seule sa configuration est permise
+    if (!user.totp_active_le && user.is_admin) {
+      const chemin = req.originalUrl.split('?')[0];
+      const autorise = ROUTES_MOT_DE_PASSE.includes(chemin) || chemin === '/api/profil' || chemin === '/api/profil/2fa' || chemin.startsWith('/api/profil/2fa/');
+      if (!autorise && await require('../services/double-auth.service').estObligatoire(user)) {
+        return res.status(403).json({ code: 'DOUBLE_AUTH_A_CONFIGURER', message: 'Configurez la double authentification pour continuer.' });
+      }
     }
 
     req.user = user;
@@ -148,6 +159,7 @@ const writeRequires = (module) => (req, res, next) =>
   SAFE_METHODS.includes(req.method) ? next() : authorize(module, 'WRITE')(req, res, next);
 
 module.exports = {
+  readCookie,
   authenticate, authorize, authorizeAny, writeRequires, requireAjaxHeader, getSessionUserId,
   COOKIE_NAME, cookieOptions,
 };

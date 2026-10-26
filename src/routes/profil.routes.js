@@ -21,4 +21,22 @@ router.put('/', v.profil, async (req, res) => {
   try { res.json(await svc.updateProfil(req.user.id, req.body)); } catch (e) { sendError(res, e, 400); }
 });
 
+// ── Double authentification
+const doubleAuth = require('../services/double-auth.service');
+router.get('/2fa', async (req, res) => {
+  try { res.json(await doubleAuth.etat(req.user)); } catch (e) { sendError(res, e); }
+});
+router.post('/2fa/initier', v.doubleAuthMotDePasse, async (req, res) => {
+  try { res.json(await doubleAuth.initier(req.user.id, req.body.mot_de_passe)); } catch (e) { sendError(res, e, 400); }
+});
+router.post('/2fa/activer', v.codeDoubleAuth, async (req, res) => {
+  try { res.json(await doubleAuth.activer(req.user.id, req.body.code)); } catch (e) { sendError(res, e, 400); }
+});
+router.post('/2fa/desactiver', v.doubleAuthMotDePasse, async (req, res) => {
+  try { res.json(await doubleAuth.desactiver(req.user.id, req.body.mot_de_passe, req.body.code)); } catch (e) { sendError(res, e, 400); }
+});
+router.post('/2fa/codes-secours', v.doubleAuthMotDePasse, async (req, res) => {
+  try { res.json(await doubleAuth.regenererCodes(req.user.id, req.body.mot_de_passe, req.body.code)); } catch (e) { sendError(res, e, 400); }
+});
+
 module.exports = router;

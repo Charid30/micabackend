@@ -64,12 +64,18 @@ const Utilisateur = sequelize.define('Utilisateur', {
   locked_until: { type: DataTypes.DATE, allowNull: true },
   derniere_connexion_at: { type: DataTypes.DATE, allowNull: true },
   derniere_connexion_ip: { type: DataTypes.STRING(45), allowNull: true },
+  // Double authentification (TOTP) : secrets chiffres, codes de secours en empreintes
+  totp_secret: { type: DataTypes.STRING(255), allowNull: true },
+  totp_secret_attente: { type: DataTypes.STRING(255), allowNull: true },
+  totp_codes_secours: { type: DataTypes.TEXT, allowNull: true },
+  totp_active_le: { type: DataTypes.DATE, allowNull: true },
   ...auditFields,
 }, {
   tableName: 'utilisateurs',
   timestamps: false,
-  // Le hash du mot de passe n'est jamais chargé (ni renvoyé au client) sauf via scope('withPassword')
-  defaultScope: { attributes: { exclude: ['password', 'failed_login_attempts', 'locked_until'] } },
+  // Le hash du mot de passe et les secrets de double authentification ne sont jamais charges
+  // (ni renvoyes au client) sauf via scope('withPassword')
+  defaultScope: { attributes: { exclude: ['password', 'failed_login_attempts', 'locked_until', 'totp_secret', 'totp_secret_attente', 'totp_codes_secours'] } },
   scopes: { withPassword: {} },
 });
 
@@ -395,6 +401,36 @@ Agent.belongsTo(Direction, { foreignKey: 'direction_id', as: 'direction' });
 Agent.hasOne(Utilisateur, { foreignKey: 'agent_id', as: 'utilisateur' });
 Utilisateur.belongsTo(Agent, { foreignKey: 'agent_id', as: 'agent' });
 
+// ── SAUVEGARDES de la base (planifiees, manuelles, rattrapage)
+const Sauvegarde = sequelize.define('Sauvegarde', {
+  id:               { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  fichier:          { type: DataTypes.STRING(255), allowNull: true },
+  taille:           { type: DataTypes.BIGINT, allowNull: true },
+  statut:           { type: DataTypes.ENUM('OK', 'ECHEC'), allowNull: false },
+  message:          { type: DataTypes.STRING(500), allowNull: true },
+  origine:          { type: DataTypes.ENUM('PLANIFIEE', 'MANUELLE', 'RATTRAPAGE'), allowNull: false },
+  duree_ms:         { type: DataTypes.INTEGER, allowNull: true },
+  copie_secondaire: { type: DataTypes.TINYINT, defaultValue: 0 },
+  created_at:       { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  created_by:       { type: DataTypes.INTEGER, allowNull: true },
+}, { tableName: 'sauvegardes', timestamps: false });
+
+// ── JOURNAL D'AUDIT des actions d'ecriture
+const JournalAction = sequelize.define('JournalAction', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  utilisateur_id: { type: DataTypes.INTEGER, allowNull: true },
+  username:       { type: DataTypes.STRING(50), allowNull: true },
+  action:         { type: DataTypes.STRING(40), allowNull: false },
+  module:         { type: DataTypes.STRING(60), allowNull: false },
+  route:          { type: DataTypes.STRING(255), allowNull: false },
+  cible:          { type: DataTypes.STRING(255), allowNull: true },
+  details:        { type: DataTypes.TEXT, allowNull: true },
+  statut_http:    { type: DataTypes.SMALLINT, allowNull: true },
+  succes:         { type: DataTypes.TINYINT, defaultValue: 1 },
+  ip:             { type: DataTypes.STRING(45), allowNull: true },
+  created_at:     { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+}, { tableName: 'journal_actions', timestamps: false });
+
 // ── CONNEXIONS (historique des connexions reussies et echouees de chaque compte)
 const ConnexionUtilisateur = sequelize.define('ConnexionUtilisateur', {
   id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -492,6 +528,8 @@ CafMoyenAchat.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
 module.exports = {
   sequelize,
   ConnexionUtilisateur,
+  Sauvegarde,
+  JournalAction,
   Entreprise,
   Direction,
   Agent,

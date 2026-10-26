@@ -12,7 +12,7 @@ const { sendError } = require('../utils/http-error');
 
 exports.getSemaineCourante = async (req, res) => {
   try {
-    const data = await getSaisieData(req.user.id);
+    const data = await getSaisieData();
     res.json(data);
   } catch (err) {
     console.error('[AchatsTraders] GET :', err.message);
@@ -22,11 +22,11 @@ exports.getSemaineCourante = async (req, res) => {
 
 exports.postSaisie = async (req, res) => {
   try {
-    const { rapport_id, achats } = req.body;
-    if (!rapport_id || !Array.isArray(achats)) {
-      return res.status(400).json({ message: 'rapport_id et achats[] requis.' });
+    const { achats, supprimes } = req.body;
+    if (!Array.isArray(achats) || (supprimes !== undefined && !Array.isArray(supprimes))) {
+      return res.status(400).json({ message: 'achats[] requis.' });
     }
-    const result = await saveSaisie(rapport_id, achats, req.user.id);
+    const result = await saveSaisie(achats, (supprimes || []).map(Number), req.user.id);
     res.json(result);
   } catch (err) {
     console.error('[AchatsTraders] POST :', err.message);

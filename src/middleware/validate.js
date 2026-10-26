@@ -58,6 +58,23 @@ module.exports = {
     body('nouveauMotDePasse').isString().isLength({ min: 1, max: 128 }).withMessage('Les deux mots de passe sont requis.'),
   ]),
 
+  // ── Reglages de securite (administrateurs)
+  reglagesSecurite: check([
+    body('double_auth_obligatoire').isBoolean({ loose: true }).withMessage('Valeur invalide.'),
+    body('double_auth_delai_jours').isInt({ min: 0, max: 90 }).withMessage('Délai invalide (0 à 90 jours).').toInt(),
+    body('mot_de_passe_duree_jours').isInt({ min: 0, max: 730 }).withMessage('Durée invalide (0 à 730 jours, 0 = sans expiration).').toInt(),
+    body('mot_de_passe_rappel_jours').isInt({ min: 0, max: 60 }).withMessage('Rappel invalide (0 à 60 jours).').toInt(),
+  ]),
+
+  // ── Double authentification
+  codeDoubleAuth: check([
+    body('code').isString().bail().trim().isLength({ min: 6, max: 12 }).withMessage('Code invalide.'),
+  ]),
+  doubleAuthMotDePasse: check([
+    body('mot_de_passe').isString().isLength({ min: 1, max: 128 }).withMessage('Mot de passe requis.'),
+    body('code').optional().isString().bail().trim().isLength({ min: 6, max: 12 }).withMessage('Code invalide.'),
+  ]),
+
   // ── Profil (utilisateur connecte)
   profil: check([
     body('email').optional().isString().bail().trim().isEmail().withMessage('Adresse e-mail invalide.').isLength({ max: 150 }),

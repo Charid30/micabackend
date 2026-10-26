@@ -34,6 +34,8 @@ const passwordLimiter = rateLimit({
 });
 
 router.post('/login', loginLimiter, v.login, authController.login);
+// Etape 2 de la connexion (double authentification) : meme limitation que la connexion
+router.post('/login/2fa', loginLimiter, v.codeDoubleAuth, authController.loginDoubleAuth);
 router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.me);
 router.put('/change-password', authenticate, passwordLimiter, v.changePassword, authController.changePassword);

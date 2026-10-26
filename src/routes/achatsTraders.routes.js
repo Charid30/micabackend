@@ -12,6 +12,8 @@ const router = express.Router();
 const { authorize } = require('../middleware/auth');
 const controller = require('../controllers/achatsTraders.controller');
 
+// Registre permanent ; /semaine-courante conserve pour compatibilite
+router.get('/registre', authorize('achats-traders', 'READ'), controller.getSemaineCourante);
 router.get('/semaine-courante', authorize('achats-traders', 'READ'), controller.getSemaineCourante);
 router.post('/saisie', authorize('achats-traders', 'WRITE'), controller.postSaisie);
 

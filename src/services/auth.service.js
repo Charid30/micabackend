@@ -13,6 +13,7 @@ const { Op } = require('sequelize');
 const jwtConfig = require('../config/jwt');
 const { Utilisateur, Agent, Direction, Entreprise, Permission, Depot } = require('../models');
 const { chargerPolitique, etatMotDePasse, journaliserConnexion } = require('./securite-compte.service');
+const doubleAuth = require('./double-auth.service');
 
 const _userIncludes = [
   {
@@ -24,6 +25,9 @@ const _userIncludes = [
     include: [{ model: Depot, as: 'depot', attributes: ['id', 'code', 'libelle', 'type'], required: false }],
   },
 ];
+
+const JETON_2FA_DUREE = '5m';
+const issueToken2fa = (user) => jwt.sign({ id: user.id, etape: '2fa' }, jwtConfig.secret, { expiresIn: JETON_2FA_DUREE, algorithm: 'HS256' });
 
 const issueToken = (user) => jwt.sign(
   { id: user.id, username: user.username },
@@ -40,7 +44,7 @@ const DUMMY_HASH = bcrypt.hashSync('compte-inexistant', 10);
 
 // Profil renvoye a l'application : le changement de mot de passe est exige a la premiere connexion
 // (must_change_password) ou a l'expiration du mot de passe (politique MOT_DE_PASSE_DUREE_JOURS)
-const profilSession = (user, politique) => {
+const profilSession = (user, politique, doubleAuth2 = { requise: false, echeance: null }) => {
   const mdp = etatMotDePasse(user, politique);
   return {
     id: user.id,
@@ -50,6 +54,11 @@ const profilSession = (user, politique) => {
     must_change_password: !!user.must_change_password || mdp.expire,
     mot_de_passe_expire: mdp.expire && !user.must_change_password,
     mot_de_passe: { expire_le: mdp.expire_le, jours_restants: mdp.jours_restants, rappel: mdp.rappel },
+    // Administrateur sans double authentification alors qu'elle est obligatoire : configuration exigee
+    double_auth_requise: doubleAuth2.requise,
+    // Obligation annoncee (delai de grace en cours) : date limite affichee dans un bandeau
+    double_auth_echeance: !user.totp_active_le && !doubleAuth2.requise ? doubleAuth2.echeance : null,
+    double_auth_active: !!user.totp_active_le,
     agent: user.agent,
     permissions: user.permissions,
   };
@@ -87,19 +96,57 @@ const login = async (identifiant, password, ctx = {}) => {
     throw INVALID_CREDENTIALS;
   }
 
+  // Double authentification activee : le mot de passe est correct, le code est demande a l'etape 2
+  if (user.totp_secret) {
+    await user.update({ failed_login_attempts: 0, locked_until: null });
+    return { etape2fa: true, jeton2fa: issueToken2fa(user) };
+  }
+  return ouvrirSession(user, ctx, null);
+};
+
+// Session ouverte : derniere connexion, historique, jeton de session
+const ouvrirSession = async (user, ctx, motif) => {
   await user.update({
     failed_login_attempts: 0, locked_until: null,
     derniere_connexion_at: new Date(), derniere_connexion_ip: ctx.ip || null,
   });
-  await journaliserConnexion(user.id, true, null, ctx);
+  await journaliserConnexion(user.id, true, motif, ctx);
+  const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
+  return { token: issueToken(user), utilisateur: profilSession(user, await chargerPolitique(), ex) };
+};
 
-  return { token: issueToken(user), utilisateur: profilSession(user, await chargerPolitique()) };
+// Etape 2 : code de l'application d'authentification ou code de secours
+const loginDoubleAuth = async (jeton2fa, code, ctx = {}) => {
+  let decoded;
+  try { decoded = jwt.verify(jeton2fa || '', jwtConfig.secret, { algorithms: ['HS256'] }); } catch { decoded = null; }
+  if (!decoded || decoded.etape !== '2fa') throw { status: 401, message: 'Session de connexion expirée : saisissez à nouveau votre mot de passe.' };
+  const user = await Utilisateur.scope('withPassword').findOne({ where: { id: decoded.id, del: 0 }, include: _userIncludes });
+  if (!user || !user.totp_secret) throw { status: 401, message: 'Session de connexion expirée : saisissez à nouveau votre mot de passe.' };
+  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    const minutes = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
+    throw { status: 423, message: `Compte temporairement verrouillé suite à plusieurs échecs. Réessayez dans ${minutes} minute(s).` };
+  }
+  const r = await doubleAuth.verifierConnexion(user, code);
+  if (!r.ok) {
+    const attempts = (user.failed_login_attempts || 0) + 1;
+    await journaliserConnexion(user.id, false, 'Code de double authentification incorrect', ctx);
+    if (attempts >= MAX_FAILED_ATTEMPTS) {
+      await user.update({ failed_login_attempts: 0, locked_until: new Date(Date.now() + LOCK_DURATION_MS) });
+      throw { status: 423, message: 'Trop de codes incorrects. Compte verrouillé pendant 15 minutes.' };
+    }
+    await user.update({ failed_login_attempts: attempts });
+    throw { status: 401, message: 'Code incorrect.' };
+  }
+  const session = await ouvrirSession(user, ctx, r.moyen === 'secours' ? 'Code de secours utilisé' : null);
+  if (r.moyen === 'secours') session.utilisateur.codes_secours_restants = r.restants;
+  return session;
 };
 
 const getMe = async (userId) => {
   const user = await Utilisateur.findOne({ where: { id: userId, del: 0 }, include: _userIncludes });
   if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
-  return profilSession(user, await chargerPolitique());
+  const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
+  return profilSession(user, await chargerPolitique(), ex);
 };
 
 // Le nouveau mot de passe doit differer de l'actuel
@@ -154,4 +201,4 @@ const forcedChangePassword = async (userId, newPassword) => {
   await user.update({ password: hash, must_change_password: 0, password_changed_at: now, updated_by: userId, updated_at: now });
 };
 
-module.exports = { login, getMe, changePassword, forcedChangePassword, validatePasswordStrength, issueToken };
+module.exports = { login, loginDoubleAuth, getMe, changePassword, forcedChangePassword, validatePasswordStrength, issueToken };

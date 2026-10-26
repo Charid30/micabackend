@@ -30,6 +30,10 @@ router.put('/:id', v.parametre, async (req, res) => {
   try {
     const p = await Parametre.findByPk(req.params.id);
     if (!p) return res.status(404).json({ message: 'Paramètre introuvable' });
+    // Reglages de securite : uniquement par Parametres > Securite (administrateurs)
+    if (require('../services/securite.service').CLES_SECURITE.includes(p.cle)) {
+      return res.status(403).json({ message: 'Réglage de sécurité : modifiable par un administrateur dans Paramètres > Sécurité.' });
+    }
     await p.update({ valeur: req.body.valeur });
     res.json(p);
   } catch (e) { sendError(res, e, 400); }

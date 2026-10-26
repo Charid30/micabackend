@@ -21,6 +21,13 @@ const anyRead = authorizeAny(
   ['ventes', 'READ'], ['recommandations', 'READ'], ['caf_moyen', 'READ']
 );
 
+// Stocks jour par jour d'une semaine (?rapport_id, ?depot_id, ?produit_id)
+const entier = (v) => { const n = parseInt(v, 10); return n > 0 ? n : null; };
+router.get('/journalier', anyRead, async (req, res) => {
+  try {
+    res.json(await svc.getJournalier({ rapportId: entier(req.query.rapport_id), depotId: entier(req.query.depot_id), produitId: entier(req.query.produit_id) }));
+  } catch (e) { sendError(res, e); }
+});
 router.get('/stocks',     anyRead, async (req, res) => { try { res.json(await svc.getStocks(parse(req)));     } catch (e) { sendError(res, e); } });
 router.get('/corridors',  anyRead, async (req, res) => { try { res.json(await svc.getCorridors(parse(req)));  } catch (e) { sendError(res, e); } });
 router.get('/tresorerie', anyRead, async (req, res) => { try { res.json(await svc.getTresorerie(parse(req))); } catch (e) { sendError(res, e); } });

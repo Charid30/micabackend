@@ -77,4 +77,6 @@ const libelleNavigateur = (ua) => {
   return os ? `${nav} – ${os}` : nav;
 };
 
-module.exports = { chargerPolitique, etatMotDePasse, contexteRequete, journaliserConnexion, libelleNavigateur };
+const viderCache = () => { cache = null; };
+
+module.exports = { viderCache, chargerPolitique, etatMotDePasse, contexteRequete, journaliserConnexion, libelleNavigateur };

@@ -30,6 +30,8 @@ const { sendError } = require('./utils/http-error');
 const sequelize = require('./config/database');
 const routes = require('./routes');
 const { startScheduler } = require('./services/scheduler.service');
+const { startSauvegardes } = require('./services/sauvegarde.service');
+const { journaliser, startPurgeJournal } = require('./services/journal.service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,7 +81,8 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use('/storage', authenticate, express.static(path.join(__dirname, '..', 'storage')));
 
 // ── Routes API (protection CSRF : en-tête X-Requested-With exigé sur les requêtes d'écriture)
-app.use('/api', requireAjaxHeader, routes);
+// Journal d'audit : chaque action d'ecriture est enregistree a la fin de la reponse
+app.use('/api', requireAjaxHeader, journaliser, routes);
 
 // ── Route santé (interne uniquement, pas d'info sensible)
 app.get('/health', (req, res) => res.json({ status: 'OK' }));
@@ -103,6 +106,8 @@ const start = async () => {
     console.log('Modèles synchronisés.');
 
     await startScheduler();
+    await startSauvegardes();
+    startPurgeJournal();
 
     app.listen(PORT, () => {
       console.log(`Serveur démarré sur http://localhost:${PORT}`);
