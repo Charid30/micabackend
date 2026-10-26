@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
 const sequelize = require('../../config/database');

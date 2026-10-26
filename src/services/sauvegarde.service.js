@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Sauvegarde automatique de la base MySQL
 //  - chaque nuit (SAUVEGARDE_CRON, 02h00 par defaut) : mysqldump compresse (.sql.gz) dans SAUVEGARDE_DIR

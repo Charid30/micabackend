@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Autonomie des stocks (onglet "Autonomie" du fichier Indicateurs.xlsx)
 //  - referentiels_stock    : impompable et consommation moyenne par depot x produit (valeurs "figees",

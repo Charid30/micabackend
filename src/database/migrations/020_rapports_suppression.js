@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Suppression (logique) des rapports par l'administrateur.
 // L'index unique uq_semaine (annee, semaine_iso) comptait aussi les rapports supprimes : apres la

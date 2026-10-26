@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Situation de tresorerie hebdomadaire.
 //  - Les lignes sont parametrables (table tresorerie_lignes) : le chef Treso peut ajouter, renommer,

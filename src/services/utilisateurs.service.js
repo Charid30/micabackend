@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 const bcrypt = require('bcryptjs');
 const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../models');

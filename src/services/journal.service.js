@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Journal d'audit : toutes les actions d'ecriture (creation, modification, suppression, archivage)
 // sont enregistrees automatiquement par le middleware « journaliser » : qui, quoi, quand, depuis ou.

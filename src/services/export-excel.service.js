@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Export Excel d'un rapport hebdomadaire, au format du classeur de reference Indicateurs.xlsx :
 //  - onglet « Autonomie » : depots interieurs, synthese interieure, depots exterieurs, synthese exterieure

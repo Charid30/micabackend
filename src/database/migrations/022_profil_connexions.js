@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Profil utilisateur et securite des comptes
 //  - utilisateurs.derniere_connexion_at / derniere_connexion_ip : affiches sur le profil

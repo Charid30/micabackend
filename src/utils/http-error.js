@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Réponse d'erreur uniforme : seuls les messages métier sont renvoyés au client.
 // Les erreurs techniques (SQL, bugs JS…) sont journalisées côté serveur et masquées.

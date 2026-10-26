@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Referentiel des stocks : valeurs "figees", revues periodiquement, historisees par date d'effet.
 //  - impompable et consommation moyenne par depot interieur x produit

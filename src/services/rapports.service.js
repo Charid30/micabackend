@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 const { RapportHebdo, VenteMarketeur, FinanceDette, Produit, Marketeur } = require('../models');
 const { getAutonomie, trierProduits } = require('./autonomie.service');

@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Rapport au format du document REPORTING (Word de la direction)
 //  - produits.densite_t_m3        : densite a 15 °C, pour convertir en litres les quantites achetees en tonnes

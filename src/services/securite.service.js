@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Reglages de securite (Parametres > Securite, administrateurs uniquement) :
 // double authentification des administrateurs (option + delai de grace) et validite des mots de passe.

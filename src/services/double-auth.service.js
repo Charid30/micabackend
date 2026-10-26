@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Double authentification par code temporaire (TOTP, RFC 6238) : compatible Google Authenticator,
 // Microsoft Authenticator, FreeOTP... Code de 6 chiffres renouvele toutes les 30 secondes.

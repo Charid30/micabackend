@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Contenu du rapport hebdomadaire au format du document REPORTING de la direction :
 //   en-tete « Situation des stocks SONABHY a la date du ... »

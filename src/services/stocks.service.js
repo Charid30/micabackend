@@ -6,6 +6,7 @@
  *           Whatsapp: +226 51 57 82 89
  *           Mail: bkevin@sonabhy.bf // bationor10@gmail.com
  *  Projet : MICA – SONABHY
+ *  Merci
  * ================================================================== */
 // Saisie quotidienne des stocks (stock en bacs, stock en embranchement) et des actions entreprises.
 // L'impompable et la consommation moyenne ne sont plus saisis ici : ce sont des valeurs de reference
