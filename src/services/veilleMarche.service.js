@@ -54,6 +54,13 @@ const getSaisieData = async (userId) => {
   };
 };
 
+// Prix saisi : vide = pas de valeur ; virgule decimale acceptee (126,974)
+const prix = (v) => {
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  const n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
 const saveSaisie = async (rapportId, indicateurs, userId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw new Error('Rapport introuvable.');
@@ -61,8 +68,8 @@ const saveSaisie = async (rapportId, indicateurs, userId) => {
 
   const frequence = await frequenceDe('veille-marche');
   for (const ind of indicateurs) {
-    const n1 = ind.prix_semaine_n1 != null ? parseFloat(ind.prix_semaine_n1) : null;
-    const n  = ind.prix_semaine_n  != null ? parseFloat(ind.prix_semaine_n)  : null;
+    const n1 = prix(ind.prix_semaine_n1);
+    const n  = prix(ind.prix_semaine_n);
 
     await ecrireLigne(VeilleMarche, { rapport_id: rapportId, produit: ind.code },
       { prix_semaine_n1: n1, prix_semaine_n: n, taux_change_usd: 0 }, frequence, userId);

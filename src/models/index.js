@@ -255,9 +255,9 @@ const VeilleMarche = sequelize.define('VeilleMarche', {
   rapport_id: { type: DataTypes.INTEGER, allowNull: false },
   date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
   produit: { type: DataTypes.STRING(30), allowNull: false },
-  prix_semaine_n: { type: DataTypes.DECIMAL(10, 4), allowNull: false },
-  prix_semaine_n1: { type: DataTypes.DECIMAL(10, 4), allowNull: false },
-  taux_change_usd: { type: DataTypes.DECIMAL(10, 4), allowNull: false },
+  prix_semaine_n: { type: DataTypes.DECIMAL(10, 4), allowNull: true },
+  prix_semaine_n1: { type: DataTypes.DECIMAL(10, 4), allowNull: true },
+  taux_change_usd: { type: DataTypes.DECIMAL(10, 4), allowNull: false, defaultValue: 0 },
   ...auditFields,
 }, { tableName: 'veille_marche', timestamps: false });
 
