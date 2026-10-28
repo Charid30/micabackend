@@ -12,7 +12,7 @@
 //  - encours_lignes  : planning de livraison (produit, fournisseur, corridor, quantite prevue en TM,
 //                      date de livraison prevue, statut), rattache a la semaine du rapport ;
 //  - encours_besoins : besoin par produit (TM) pour le taux de couverture ;
-//  - frequence de saisie (permanente par defaut : reprise d'une semaine a l'autre) ;
+//  - frequence de saisie (hebdomadaire par defaut) ;
 //  - droit « encours-livraison » donne a ceux qui ont deja le droit « achats-traders » (meme equipe).
 const tableExiste = async (sequelize, t) => (await sequelize.query(
   `SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
@@ -63,7 +63,7 @@ module.exports = {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
     }
     await sequelize.query(
-      `INSERT IGNORE INTO parametres (cle, valeur, description) VALUES ('FREQUENCE_ENCOURS_LIVRAISON', 'PERMANENT', 'Fréquence de saisie (QUOTIDIEN, HEBDOMADAIRE, PERMANENT)')`
+      `INSERT IGNORE INTO parametres (cle, valeur, description) VALUES ('FREQUENCE_ENCOURS_LIVRAISON', 'HEBDOMADAIRE', 'Fréquence de saisie (QUOTIDIEN, HEBDOMADAIRE, PERMANENT)')`
     );
     // Meme droit que les achats traders (equipe approvisionnement), sans ecraser un droit deja donne
     await sequelize.query(`

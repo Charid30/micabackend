@@ -37,7 +37,7 @@ const MODULES = [
   { code: 'ventes',          libelle: 'Ventes',              defaut: 'HEBDOMADAIRE', model: VenteMarketeur,     cle: null },
   { code: 'tresorerie',      libelle: 'Trésorerie',          defaut: 'HEBDOMADAIRE', model: TresorerieSemaine,  cle: r => r.code },
   { code: 'recommandations', libelle: 'Recommandations',     defaut: 'HEBDOMADAIRE', model: Recommandation,     cle: () => 'unique' },
-  { code: 'encours-livraison', libelle: 'Encours',           defaut: 'PERMANENT',    model: EncoursLigne,       cle: null,
+  { code: 'encours-livraison', libelle: 'Encours',           defaut: 'HEBDOMADAIRE', model: EncoursLigne,       cle: null,
     lies: [{ model: EncoursBesoin, cle: r => r.produit_id }] },
   // Registres : pas rattaches a une semaine, la frequence ne s'applique pas
   { code: 'caf-moyen',       libelle: 'CAF moyen',           defaut: 'PERMANENT', verrouille: 'Registre mensuel (année, mois) : chaque valeur reste valable jusqu\'à sa modification.' },

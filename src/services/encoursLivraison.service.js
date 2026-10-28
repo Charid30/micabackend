@@ -13,7 +13,7 @@
 //    date de livraison prevue, statut ;
 //  - synthese par produit : quantite par fournisseur, cumul (toutes les lignes, livrees comprises),
 //    besoin saisi, taux de couverture = cumul / besoin.
-// Saisie rattachee a la semaine du rapport ; frequence parametrable (permanente par defaut).
+// Saisie hebdomadaire, rattachee a la semaine du rapport (frequence parametrable).
 const { RapportHebdo, EncoursLigne, EncoursBesoin, Produit, Fournisseur, Corridor, STATUTS_ENCOURS } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
 const { trierProduits } = require('./autonomie.service');
