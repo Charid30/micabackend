@@ -17,7 +17,7 @@
 const { Op } = require('sequelize');
 const {
   Parametre, RapportHebdo, Depot, StockDepot, ChargementCorridor, CamionDepot, TempsAttenteCamion,
-  VeilleMarche, VeilleGeopolitique, VenteMarketeur, TresorerieSemaine, Recommandation,
+  VeilleMarche, VeilleGeopolitique, VenteMarketeur, TresorerieSemaine, Recommandation, EncoursLigne, EncoursBesoin,
 } = require('../models');
 
 const FREQUENCES = {
@@ -25,6 +25,7 @@ const FREQUENCES = {
 };
 
 // cle : identifie une ligne d'une meme saisie (null = la saisie forme un tout, ex. ventes)
+// lies : autres tables de la meme saisie (reprises ensemble en frequence permanente)
 const MODULES = [
   { code: 'stocks-int',      libelle: 'Stocks dépôts int.',  defaut: 'QUOTIDIEN',    model: StockDepot,         cle: r => `${r.depot_id}_${r.produit_id}`, depots: 'INTERIEUR' },
   { code: 'stocks-ext',      libelle: 'Stocks dépôts ext.',  defaut: 'QUOTIDIEN',    model: StockDepot,         cle: r => `${r.depot_id}_${r.produit_id}`, depots: 'EXTERIEUR' },
@@ -36,6 +37,8 @@ const MODULES = [
   { code: 'ventes',          libelle: 'Ventes',              defaut: 'HEBDOMADAIRE', model: VenteMarketeur,     cle: null },
   { code: 'tresorerie',      libelle: 'Trésorerie',          defaut: 'HEBDOMADAIRE', model: TresorerieSemaine,  cle: r => r.code },
   { code: 'recommandations', libelle: 'Recommandations',     defaut: 'HEBDOMADAIRE', model: Recommandation,     cle: () => 'unique' },
+  { code: 'encours-livraison', libelle: 'Encours',           defaut: 'PERMANENT',    model: EncoursLigne,       cle: null,
+    lies: [{ model: EncoursBesoin, cle: r => r.produit_id }] },
   // Registres : pas rattaches a une semaine, la frequence ne s'applique pas
   { code: 'caf-moyen',       libelle: 'CAF moyen',           defaut: 'PERMANENT', verrouille: 'Registre mensuel (année, mois) : chaque valeur reste valable jusqu\'à sa modification.' },
   { code: 'achats-traders',  libelle: 'Achats traders',      defaut: 'PERMANENT', verrouille: 'Registre des achats : chaque achat reste visible jusqu\'à sa suppression.' },
@@ -151,7 +154,9 @@ const reporterPermanents = async (rapport, userId = null) => {
     where: { del: 0, date_fin: { [Op.lt]: rapport.date_fin } }, order: [['date_fin', 'DESC']], limit: 52, attributes: ['id'],
   });
   if (!precedents.length) return;
-  for (const m of modules) {
+  // Chaque table de la saisie (et ses tables liees) est reprise separement
+  const tables = modules.flatMap(m => [m, ...(m.lies || []).map(l => ({ ...l, depots: m.depots }))]);
+  for (const m of tables) {
     const filtre = {};
     if (m.depots) filtre.depot_id = (await Depot.findAll({ where: { type: m.depots, del: 0 }, attributes: ['id'] })).map(d => d.id);
     if (await m.model.findOne({ where: { rapport_id: rapport.id, del: 0, ...filtre } })) continue;   // deja saisi cette semaine

@@ -67,6 +67,7 @@ const getSynthese = async (rapportIdDemande = null) => {
       situationEtat: null,
       alertes: [],
       stocksInterieurs: [],
+      encours: null,
     };
   }
 
@@ -95,6 +96,9 @@ const getSynthese = async (rapportIdDemande = null) => {
   const charges  = parseInt(camions?.camionsCharges || 0);
   const objectif = parseInt(camions?.objectif || 0);
 
+  // Encours fournisseurs par produit (menu Encours) : cumul, besoin, taux de couverture
+  const enc = await require('./encoursLivraison.service').getEncours(rapport);
+
   // Alertes : chaque depot x produit sous l'objectif (rouge ou jaune)
   const alertes = [...auto.depots_interieurs, ...auto.depots_exterieurs].flatMap(d => d.lignes
     .filter(l => l.couleur === 'rouge' || l.couleur === 'jaune')
@@ -114,6 +118,7 @@ const getSynthese = async (rapportIdDemande = null) => {
     creanceEtat:          etat.creancesEtat?.montant ?? 0,
     situationEtat:        etat,
     alertes,
+    encours: { produits: enc.produits.map(({ produit, cumul, besoin, taux }) => ({ produit, cumul, besoin, taux })), total: enc.total },
     stocksInterieurs: auto.synthese_interieure.map(s => ({
       produit:         s.produit_libelle,
       stockDisponible: s.volume_total,

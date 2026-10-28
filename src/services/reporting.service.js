@@ -12,14 +12,14 @@
 //   en-tete « Situation des stocks SONABHY a la date du ... »
 //   1. Situation des stocks : informations utiles, stocks en bacs (interieur / exterieur, en litres ou kg et
 //      en jours d'autonomie), evolution des consommations, observations (evolution de l'autonomie vs N-1),
-//      encours de livraison (promesses de livraison)
+//      encours fournisseurs par produit (menu Encours : cumul, besoin, taux de couverture)
 //   2. Quantites de produits servies aux marketeurs (semaine N-1, semaine N, evolution)
 //   3. Dettes
 //   4. Difficultes majeures (et recommandations)
 // Meme contenu pour l'apercu, le PDF et l'export Excel. Les calculs d'autonomie et de tresorerie viennent
 // de autonomie.service et tresorerie.service.
 const { Op } = require('sequelize');
-const { RapportHebdo, Produit, VenteMarketeur, AchatTrader } = require('../models');
+const { RapportHebdo, Produit, VenteMarketeur } = require('../models');
 const { getAutonomie } = require('./autonomie.service');
 const { getTresorerie } = require('./tresorerie.service');
 const { derniereValeurParRapport } = require('./frequence.service');
@@ -76,37 +76,6 @@ function stocks(auto, autoPrec, produits) {
     };
   });
   return { interieurs, exterieurs };
-}
-
-// ── Encours de livraison : achats dont la livraison est posterieure a la date du rapport
-async function encours(rapport, produits, auto) {
-  const dg = auto.parametres.densite_gaz;
-  const besoins = Object.fromEntries(auto.synthese_exterieure.map(l => [l.produit_code, l.besoin_journalier]));
-  const achats = await AchatTrader.findAll({
-    where: { del: 0, date_livraison: { [Op.gt]: rapport.date_fin } },
-    include: [{ model: RapportHebdo, required: true, attributes: [], where: { del: 0, date_fin: { [Op.lte]: rapport.date_fin } } }],
-  });
-  const parId = Object.fromEntries(produits.map(p => [p.id, p]));
-  const cumul = {}; const ports = new Set(); let du = null; let au = null; const sansDensite = new Set();
-  for (const a of achats) {
-    const p = parId[a.produit_id]; if (!p) continue;
-    let q;
-    if (p.code === CODE_GAZ) q = num(a.quantite_tm) * 1000;                       // tonnes -> kg
-    else if (num(a.quantite_m3_15) > 0) q = num(a.quantite_m3_15) * 1000;          // volume a 15 °C saisi
-    else if (num(p.densite_t_m3) > 0) q = (num(a.quantite_tm) / num(p.densite_t_m3)) * 1000;
-    else { sansDensite.add(LIBELLES[p.code] || p.libelle); continue; }
-    cumul[p.code] = (cumul[p.code] || 0) + q;
-    if (a.lieu_livraison) ports.add(a.lieu_livraison.trim());
-    if (!du || a.date_livraison < du) du = a.date_livraison;
-    if (!au || a.date_livraison > au) au = a.date_livraison;
-  }
-  const lignes = produits.map(p => {
-    const q = Math.round(cumul[p.code] || 0);
-    const besoin = num(besoins[p.code]);
-    const parJour = p.code === CODE_GAZ ? besoin * dg * 1000 : besoin * 1000;
-    return { code: p.code, produit: LIBELLES[p.code] || p.libelle, unite: uniteDoc(p.code), quantite: q, jours: q > 0 && parJour > 0 ? Math.round(q / parJour) : null };
-  });
-  return { du, au, ports: [...ports], lignes, sans_densite: [...sansDensite] };
 }
 
 // ── Quantites servies aux marketeurs : semaine precedente, semaine du rapport, evolution
@@ -169,7 +138,8 @@ const getReporting = async (rapport) => {
     evolution_consommations: v.evolution
       ? produits.map(p => ({ code: p.code, produit: LIBELLES[p.code] || p.libelle, ecart: v.evolution[p.code] })).filter(e => e.ecart !== 0)
       : [],
-    encours: await encours(rapport, produits, auto),
+    // Encours fournisseurs (menu Encours) : cumul par produit, besoin, taux de couverture, planning
+    encours: await require('./encoursLivraison.service').getEncours(rapport),
     ventes: v,
     dettes: dettes(treso),
     difficultes: lignesTexte(reco?.risques_majeurs),

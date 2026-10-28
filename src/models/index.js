@@ -532,8 +532,37 @@ Recommandation.belongsTo(RapportHebdo, { foreignKey: 'rapport_id' });
 Produit.hasMany(CafMoyenAchat, { foreignKey: 'produit_id' });
 CafMoyenAchat.belongsTo(Produit, { foreignKey: 'produit_id', as: 'produit' });
 
+// ── ENCOURS : planning de livraison des fournisseurs (menu Encours)
+const STATUTS_ENCOURS = ['EN_COURS', 'EN_COURS_LIVRAISON', 'LIVRAISON_PARTIELLE', 'LIVRE'];
+const EncoursLigne = sequelize.define('EncoursLigne', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  rapport_id:     { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie:    { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
+  produit_id:     { type: DataTypes.INTEGER, allowNull: false },
+  fournisseur_id: { type: DataTypes.INTEGER, allowNull: false },
+  corridor_id:    { type: DataTypes.INTEGER, allowNull: true },
+  quantite_tm:    { type: DataTypes.DECIMAL(15, 3), allowNull: false, defaultValue: 0 },
+  date_livraison: { type: DataTypes.DATEONLY, allowNull: true },
+  statut:         { type: DataTypes.STRING(30), allowNull: false, defaultValue: 'EN_COURS' },
+  observation:    { type: DataTypes.STRING(255), allowNull: true },
+  ...auditFields,
+}, { tableName: 'encours_lignes', timestamps: false });
+
+// ── ENCOURS : besoin par produit (taux de couverture)
+const EncoursBesoin = sequelize.define('EncoursBesoin', {
+  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  rapport_id:  { type: DataTypes.INTEGER, allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: true, defaultValue: null },
+  produit_id:  { type: DataTypes.INTEGER, allowNull: false },
+  besoin_tm:   { type: DataTypes.DECIMAL(15, 3), allowNull: true },
+  ...auditFields,
+}, { tableName: 'encours_besoins', timestamps: false });
+
 module.exports = {
   sequelize,
+  EncoursLigne,
+  EncoursBesoin,
+  STATUTS_ENCOURS,
   ConnexionUtilisateur,
   Sauvegarde,
   JournalAction,

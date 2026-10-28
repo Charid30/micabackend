@@ -14,7 +14,7 @@ const { validatePasswordStrength } = require('./auth.service');
 
 const MODULES = [
   'stocks', 'impompable', 'referentiel-stocks', 'actions-stocks', 'corridors', 'depots-int', 'temps-attente',
-  'veille-marche', 'veille-geo', 'achats-traders', 'ventes',
+  'veille-marche', 'veille-geo', 'achats-traders', 'encours-livraison', 'ventes',
   'tresorerie', 'tresorerie-lignes', 'recommandations', 'caf_moyen',
   'rapports', 'administration', 'parametres',
 ];

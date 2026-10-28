@@ -32,6 +32,7 @@ router.use('/camions', authenticate, require('./camions.routes'));
 router.use('/veille-marche', authenticate, require('./veilleMarche.routes'));
 router.use('/veille-geo', authenticate, require('./veilleGeo.routes'));
 router.use('/achats-traders', authenticate, require('./achatsTraders.routes'));
+router.use('/encours-livraison', authenticate, require('./encoursLivraison.routes'));
 router.use('/parametres', authenticate, require('./parametres.routes'));
 router.use('/frequences', authenticate, require('./frequences.routes'));
 router.use('/historique', authenticate, require('./historique.routes'));

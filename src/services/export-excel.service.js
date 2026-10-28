@@ -390,11 +390,27 @@ function feuilleReporting(wb, rapport, r) {
   }
   n += 1;
 
+  // Encours fournisseurs par produit (menu Encours) : cumul, besoin, taux de couverture
   const e = r.encours;
-  texte(`Encours de livraison (promesses de livraison)${e.du ? ` du ${jjmmaaaa(e.du)} au ${jjmmaaaa(e.au)}` : ''}`
-    + `${e.ports.length ? ` (livraison ${e.ports.join(', ')})` : ''}`, { gras: true });
-  if (!e.lignes.some(l => l.quantite > 0)) texte('Aucune livraison attendue.', { puce: true });
-  else e.lignes.forEach(l => texte(`${l.produit} : ${l.quantite ? `${nbFr(l.quantite)} ${l.unite}${l.jours ? ` soit environ ${jj(l.jours)} jours` : ''}` : '00'}`, { puce: true }));
+  texte('Encours fournisseurs par produit (en TM)', { gras: true });
+  if (!e.produits.length) texte('Aucun encours saisi pour la semaine.', { puce: true });
+  else {
+    ['PRODUIT', 'CUMUL EN TM', 'BESOIN', 'TAUX DE COUVERTURE'].forEach((t, i) => entete(ws.getCell(n, 1 + i), t));
+    n += 1;
+    const debut = n;
+    e.produits.forEach(p => {
+      valeur(ws.getCell(n, 1), p.produit);
+      valeur(ws.getCell(n, 2), p.cumul, FMT_ENTIER);
+      valeur(ws.getCell(n, 3), p.besoin, FMT_ENTIER);
+      valeur(ws.getCell(n, 4), formule(`IFERROR(B${n}/C${n},"-")`, p.taux ?? '-'), '0%');
+      n += 1;
+    });
+    valeur(ws.getCell(n, 1), 'TOTAL', null, { gras: true });
+    valeur(ws.getCell(n, 2), formule(`SUM(B${debut}:B${n - 1})`, e.total.cumul), FMT_ENTIER, { gras: true });
+    valeur(ws.getCell(n, 3), formule(`SUM(C${debut}:C${n - 1})`, e.total.besoin), FMT_ENTIER, { gras: true });
+    valeur(ws.getCell(n, 4), formule(`IFERROR(B${n}/C${n},"-")`, e.total.taux ?? '-'), '0%', { gras: true });
+    n += 1;
+  }
   n += 1;
 
   titreSection('2. QUANTITÉ DE PRODUITS SERVIES AUX MARKETEURS AU COURS DE LA SEMAINE');
@@ -440,6 +456,88 @@ function feuilleReporting(wb, rapport, r) {
   ws.pageSetup = { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
 }
 
+// ─────────────────────────────── Onglet Encours (fichier « Suivi des indicateurs »)
+function feuilleEncours(wb, rapport, e) {
+  const ws = wb.addWorksheet('Encours', { views: [{ showGridLines: false }] });
+  const nbF = e.fournisseurs.length;
+  const cCumul = 2 + nbF; const cBesoin = cCumul + 1; const cTaux = cBesoin + 1;
+  const largeur = Math.max(cTaux, 9);
+  ws.getColumn(1).width = 16;
+  for (let c = 2; c <= largeur; c++) ws.getColumn(c).width = 16;
+  titre(ws, `A2:${col(largeur)}2`, `SUIVI DES ENCOURS – SEMAINE ${rapport.semaine_iso} / ${rapport.annee} (DU ${jjmmaaaa(rapport.date_debut)} AU ${jjmmaaaa(rapport.date_fin)})`);
+  ws.getRow(2).height = 24;
+
+  // Synthese : produit x fournisseur
+  let n = 4;
+  entete(ws.getCell(n, 1), 'PRODUITS');
+  e.fournisseurs.forEach((f, i) => entete(ws.getCell(n, 2 + i), f.libelle.toUpperCase()));
+  entete(ws.getCell(n, cCumul), 'CUMUL EN TM'); entete(ws.getCell(n, cBesoin), 'BESOIN'); entete(ws.getCell(n, cTaux), 'TAUX DE COUVERTURE');
+  ws.getRow(n).height = 30;
+  n += 1;
+  const debut = n;
+  e.produits.forEach((p, k) => {
+    const gris = k % 2 === 1;
+    valeur(ws.getCell(n, 1), p.produit, null, { gris });
+    e.fournisseurs.forEach((f, i) => valeur(ws.getCell(n, 2 + i), p.par_fournisseur[f.id] ?? null, FMT_ENTIER, { gris }));
+    valeur(ws.getCell(n, cCumul), nbF ? formule(`SUM(B${n}:${col(1 + nbF)}${n})`, p.cumul) : p.cumul, FMT_ENTIER, { gris, gras: true });
+    valeur(ws.getCell(n, cBesoin), p.besoin, FMT_ENTIER, { gris });
+    valeur(ws.getCell(n, cTaux), formule(`IFERROR(${col(cCumul)}${n}/${col(cBesoin)}${n},"-")`, p.taux ?? '-'), '0%', { gris, gras: true });
+    n += 1;
+  });
+  if (!e.produits.length) { ws.mergeCells(n, 1, n, cTaux); ws.getCell(n, 1).value = 'Aucun encours saisi pour la semaine.'; n += 1; }
+  else {
+    valeur(ws.getCell(n, 1), 'TOTAL', null, { gras: true });
+    for (const c of [...e.fournisseurs.map((_, i) => 2 + i), cCumul, cBesoin]) {
+      valeur(ws.getCell(n, c), formule(`SUM(${col(c)}${debut}:${col(c)}${n - 1})`), FMT_ENTIER, { gras: true });
+    }
+    valeur(ws.getCell(n, cTaux), formule(`IFERROR(${col(cCumul)}${n}/${col(cBesoin)}${n},"-")`, e.total.taux ?? '-'), '0%', { gras: true });
+    n += 1;
+  }
+
+  // Planning de livraison par produit, corridor et fournisseur
+  n += 2;
+  titre(ws, `A${n}:I${n}`, 'PLANNING DE LIVRAISON PAR PRODUIT, CORRIDOR ET FOURNISSEUR');
+  n += 2;
+  ['Produit', 'Fournisseur', 'Corridor de destination', 'Quantité prévue (TM)', 'Date de livraison prévue', 'Statut', 'Cumul en TM', 'Besoins', 'Taux de couverture']
+    .forEach((t, i) => entete(ws.getCell(n, 1 + i), t));
+  ws.getRow(n).height = 30;
+  n += 1;
+  const debutP = n;
+  const synth = Object.fromEntries(e.produits.map(p => [p.produit_id, p]));
+  let i = 0;
+  while (i < e.planning.length) {
+    const pid = e.planning[i].produit_id;
+    let j = i; while (j < e.planning.length && e.planning[j].produit_id === pid) j++;
+    const groupe = e.planning.slice(i, j);   // lignes consecutives du meme produit (planning trie par produit)
+    const d = n; const f = n + groupe.length - 1;
+    groupe.forEach(l => {
+      valeur(ws.getCell(n, 2), l.fournisseur); valeur(ws.getCell(n, 3), l.corridor || '');
+      valeur(ws.getCell(n, 4), l.quantite_tm, FMT_ENTIER);
+      valeur(ws.getCell(n, 5), l.date_livraison ? jjmmaaaa(l.date_livraison) : '');
+      valeur(ws.getCell(n, 6), l.statut_libelle);
+      n += 1;
+    });
+    const s = synth[pid] || {};
+    for (const [c, v, fmt] of [[1, groupe[0].produit, null], [7, formule(`SUM(D${d}:D${f})`, s.cumul), FMT_ENTIER], [8, s.besoin ?? null, FMT_ENTIER],
+      [9, formule(`IFERROR(G${d}/H${d},"-")`, s.taux ?? '-'), '0%']]) {
+      if (f > d) ws.mergeCells(d, c, f, c);
+      const cell = ws.getCell(d, c);
+      valeur(cell, v, fmt, { gras: c !== 8 });
+      cell.alignment = { vertical: 'middle', horizontal: c === 1 ? 'left' : 'right' };
+      for (let r = d + 1; r <= f; r++) ws.getCell(r, c).border = cell.border;
+    }
+    i += groupe.length;
+  }
+  if (e.planning.length) {
+    valeur(ws.getCell(n, 1), 'TOTAL', null, { gras: true });
+    valeur(ws.getCell(n, 4), formule(`SUM(D${debutP}:D${n - 1})`), FMT_ENTIER, { gras: true });
+    valeur(ws.getCell(n, 7), formule(`SUM(G${debutP}:G${n - 1})`, e.total.cumul), FMT_ENTIER, { gras: true });
+    valeur(ws.getCell(n, 8), formule(`SUM(H${debutP}:H${n - 1})`, e.total.besoin), FMT_ENTIER, { gras: true });
+    valeur(ws.getCell(n, 9), formule(`IFERROR(G${n}/H${n},"-")`, e.total.taux ?? '-'), '0%', { gras: true });
+  }
+  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
+}
+
 const exporterRapport = async (rapportId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw { status: 404, message: 'Rapport introuvable.' };
@@ -453,6 +551,7 @@ const exporterRapport = async (rapportId) => {
   feuilleReporting(wb, rapport, reporting);
   feuilleAutonomie(wb, rapport, autonomie);
   feuilleTresorerie(wb, rapport, tresorerie);
+  feuilleEncours(wb, rapport, reporting.encours);
   return {
     buffer: await wb.xlsx.writeBuffer(),
     filename: `MICA_Indicateurs_S${String(rapport.semaine_iso).padStart(2, '0')}_${rapport.annee}.xlsx`,
