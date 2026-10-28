@@ -27,4 +27,9 @@ router.post('/saisie', authorize('encours-livraison', 'WRITE'), async (req, res)
   } catch (e) { sendError(res, e, 400); }
 });
 
+// Fournisseur absent de la liste : ajout depuis l'ecran (droit d'ecriture sur Encours)
+router.post('/fournisseurs', authorize('encours-livraison', 'WRITE'), async (req, res) => {
+  try { res.status(201).json(await service.ajouterFournisseur(req.body?.libelle, req.user.id)); } catch (e) { sendError(res, e, 400); }
+});
+
 module.exports = router;

@@ -164,4 +164,26 @@ const saveSaisie = async (rapportId, lignes, besoins, userId) => {
   return { message: 'Encours enregistrés avec succès.' };
 };
 
-module.exports = { getSaisieData, saveSaisie, getEncours, STATUTS };
+// Fournisseur absent de la liste : ajoute depuis l'ecran Encours (meme table que Parametres > Fournisseurs).
+// Un fournisseur de meme nom (actif ou supprime) est repris au lieu d'etre cree en double.
+const sansAccents = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const ajouterFournisseur = async (libelleSaisi, userId) => {
+  const libelle = String(libelleSaisi ?? '').replace(/\s+/g, ' ').trim();
+  if (libelle.length < 2 || libelle.length > 150) throw { status: 400, message: 'Nom du fournisseur : 2 à 150 caractères.' };
+  const cle = sansAccents(libelle).toUpperCase();
+  const tous = await Fournisseur.findAll();
+  const meme = tous.find(f => sansAccents(f.libelle).toUpperCase() === cle);
+  if (meme) {
+    if (meme.del) await meme.update({ del: 0, deleted_at: null, deleted_by: null, updated_by: userId, updated_at: new Date() });
+    return { message: meme.del ? `Fournisseur « ${meme.libelle} » réactivé.` : `Fournisseur « ${meme.libelle} » déjà dans la liste.`, fournisseur: { id: meme.id, code: meme.code, libelle: meme.libelle } };
+  }
+  // Code unique tire du nom (ex. « Gulf Trading » -> GULF_TRADING)
+  const base = cle.replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 26) || 'FOURNISSEUR';
+  const codes = new Set(tous.map(f => f.code));
+  let code = base; let i = 2;
+  while (codes.has(code)) code = `${base}_${i++}`.slice(0, 30);
+  const f = await Fournisseur.create({ code, libelle, del: 0, created_by: userId, updated_by: userId });
+  return { message: `Fournisseur « ${libelle} » ajouté.`, fournisseur: { id: f.id, code: f.code, libelle: f.libelle } };
+};
+
+module.exports = { getSaisieData, saveSaisie, getEncours, ajouterFournisseur, STATUTS };
