@@ -74,7 +74,9 @@ const saveSaisie = async (rapportId, lignes, user, droits) => {
     if (depotId && l.depot_id !== depotId) continue;   // hors du perimetre de l'utilisateur : ignore
 
     // ── Quantites du jour
-    if (droits.stocks && (l.stock_bacs !== undefined || l.stock_embranchement !== undefined)) {
+    // Champs laisses vides : rien n'est enregistre (la derniere valeur saisie reste valable)
+    const renseigne = (v) => v !== undefined && v !== null && v !== '';
+    if (droits.stocks && (renseigne(l.stock_bacs) || renseigne(l.stock_embranchement))) {
       const bacs = Number(l.stock_bacs) || 0;
       // Le stock en embranchement ne concerne que les depots interieurs
       const embr = typeDepot[l.depot_id] === 'INTERIEUR' ? (Number(l.stock_embranchement) || 0) : 0;

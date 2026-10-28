@@ -79,6 +79,7 @@ function calculerAutonomie({ depots, produits, stocks = {}, referentiels = {}, b
       const coul = couleur(autonomie, objectif, p.seuilRouge);
       return {
         produit_id: pr.id, produit_code: pr.code, produit_libelle: pr.libelle,
+        saisi: !!stocks[k],   // stock saisi (ecran de saisie : saisi ce jour-la)
         stock_bacs: bacs, stock_embranchement: embranchement, volume_total: total,
         impompable, conso_moyenne: conso, objectif_jours: objectif,
         autonomie: round(autonomie), stock_securite: round(stockSecurite, 3),
@@ -125,6 +126,7 @@ function calculerAutonomie({ depots, produits, stocks = {}, referentiels = {}, b
       const coul = couleur(autonomie, objectif, p.seuilRouge);
       return {
         produit_id: pr.id, produit_code: pr.code, produit_libelle: pr.libelle,
+        saisi: !!stocks[k],
         stock_disponible: stock, besoin_journalier: besoin, objectif_jours: objectif,
         autonomie: round(autonomie), couleur: coul,
         negatif: stock < 0, exclu_total: !!r.exclu,
