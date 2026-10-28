@@ -51,7 +51,11 @@ function stocks(auto, autoPrec, produits) {
   const jours = (a) => (a === null || a === undefined ? null : Math.round(a));
   const evolution = (a, b) => (jours(a) === null || jours(b) === null ? null : jours(a) - jours(b));
 
-  const interieurs = produits.map(p => {
+  // Seuls les produits qui ont un stock saisi figurent au rapport : un produit sans bac a la SONABHY
+  // (ex. Fuel) ou sans valeur pour la semaine n'est pas affiche (un stock negatif a l'exterieur reste affiche)
+  const aUneValeur = (l) => !!l && Number(l.volume_total) !== 0;
+
+  const interieurs = produits.filter(p => aUneValeur(int[p.code])).map(p => {
     const l = int[p.code];
     // Produit sans stockage interne (ex. Jet A1, Fuel) : ni consommation ni impompable ni stock
     const sansBac = !l || (l.conso_moyenne === 0 && l.impompable === 0 && l.volume_total === 0);
@@ -62,7 +66,7 @@ function stocks(auto, autoPrec, produits) {
       evolution_jours: sansBac ? null : evolution(l.autonomie, intPrec[p.code]?.autonomie),
     };
   });
-  const exterieurs = produits.map(p => {
+  const exterieurs = produits.filter(p => aUneValeur(ext[p.code])).map(p => {
     const l = ext[p.code];
     return {
       code: p.code, produit: LIBELLES[p.code] || p.libelle, unite: uniteDoc(p.code), sans_bac: false,
