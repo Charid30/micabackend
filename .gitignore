@@ -5,3 +5,6 @@ dist/
 
 # Sauvegardes de la base : ne jamais versionner
 storage/sauvegardes/
+
+# Cles VAPID des notifications push (secretes, jamais servies par l API)
+secrets/

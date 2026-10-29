@@ -558,8 +558,22 @@ const EncoursBesoin = sequelize.define('EncoursBesoin', {
   ...auditFields,
 }, { tableName: 'encours_besoins', timestamps: false });
 
+// ── NOTIFICATIONS PUSH : un abonnement par navigateur
+const PushAbonnement = sequelize.define('PushAbonnement', {
+  id:               { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  utilisateur_id:   { type: DataTypes.INTEGER, allowNull: false },
+  endpoint:         { type: DataTypes.STRING(700), allowNull: false },
+  endpoint_hash:    { type: DataTypes.CHAR(64), allowNull: false },
+  p256dh:           { type: DataTypes.STRING(255), allowNull: false },
+  auth:             { type: DataTypes.STRING(100), allowNull: false },
+  navigateur:       { type: DataTypes.STRING(255), allowNull: true },
+  dernier_envoi_at: { type: DataTypes.DATE, allowNull: true },
+  ...auditFields,
+}, { tableName: 'push_abonnements', timestamps: false });
+
 module.exports = {
   sequelize,
+  PushAbonnement,
   EncoursLigne,
   EncoursBesoin,
   STATUTS_ENCOURS,

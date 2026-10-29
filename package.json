@@ -25,6 +25,7 @@
     "node-cron": "^3.0.3",
     "qrcode": "^1.5.4",
     "sequelize": "^6.37.3",
+    "web-push": "^3.6.7",
     "winston": "^3.13.0"
   },
   "devDependencies": {

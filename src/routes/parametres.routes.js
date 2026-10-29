@@ -38,7 +38,18 @@ router.put('/:id', v.parametre, async (req, res) => {
     if (p.cle.startsWith('FREQUENCE_')) {
       return res.status(400).json({ message: 'Fréquence de saisie : modifiable dans Paramètres > Fréquences de saisie.' });
     }
+    const valeur = String(req.body.valeur ?? '').trim();
+    if (p.cle === 'NOTIF_SAISIE_HEURE' && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(valeur)) {
+      return res.status(400).json({ message: 'Heure du rappel : format HH:MM attendu (ex. 20:30).' });
+    }
+    if (p.cle === 'NOTIF_SAISIE_JOURS' && !/^[1-7](\s*,\s*[1-7])*$/.test(valeur)) {
+      return res.status(400).json({ message: 'Jours du rappel : chiffres de 1 (lundi) à 7 (dimanche) séparés par des virgules.' });
+    }
     await p.update({ valeur: req.body.valeur });
+    // Heure du rappel (format verifie ci-dessus) : prise en compte sans redemarrer l'API
+    if (p.cle === 'NOTIF_SAISIE_HEURE') {
+      require('../services/scheduler.service').restartScheduler().catch(e => console.error('[Scheduler]', e.message));
+    }
     res.json(p);
   } catch (e) { sendError(res, e, 400); }
 });

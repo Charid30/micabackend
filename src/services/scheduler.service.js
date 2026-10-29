@@ -16,6 +16,7 @@ const { RapportHebdo, Parametre } = require('../models');
 const { Op } = require('sequelize');
 
 let schedulerTask = null;
+let rappelTask = null;
 
 // Heure de publication lue dans l'expression cron (« s m h ... » ou « m h ... ») ; 06:00 par defaut
 const heurePublication = (expression) => {
@@ -55,6 +56,8 @@ const publierRapportSemaine = async () => {
       await rapport.update({ statut: 'PUBLIE', date_publication: maintenant, updated_at: maintenant });
       console.log(`[Scheduler] Rapport semaine ${rapport.semaine_iso}/${rapport.annee} (au ${rapport.date_fin}) publié.`);
     }
+    // Notification push : seulement le plus recent si plusieurs semaines sont rattrapees
+    await require('./notifications.service').notifierRapportPublie(aPublier[aPublier.length - 1]);
     return aPublier;
   } catch (err) {
     console.error('[Scheduler] Erreur lors de la publication :', err.message);
@@ -79,8 +82,23 @@ const startScheduler = async () => {
   });
 
   console.log(`[Scheduler] Démarré avec l'expression : ${expression}`);
+
+  // Rappel du soir des saisies quotidiennes manquantes (NOTIF_SAISIE_HEURE, 20:30 par defaut)
+  const { heure, minute } = await heureRappel();
+  if (rappelTask) rappelTask.stop();
+  rappelTask = cron.schedule(`0 ${minute} ${heure} * * *`,
+    () => require('./notifications.service').rappelerSaisiesManquantes(), { timezone: 'Africa/Ouagadougou' });
+  console.log(`[Scheduler] Rappel des saisies manquantes à ${String(heure).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+
   // Rattrapage : publications manquees pendant que le serveur etait arrete
   await publierRapportSemaine();
+};
+
+const heureRappel = async () => {
+  const p = await Parametre.findOne({ where: { cle: 'NOTIF_SAISIE_HEURE', del: 0 } });
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(p?.valeur || '').trim());
+  if (m && Number(m[1]) < 24 && Number(m[2]) < 60) return { heure: Number(m[1]), minute: Number(m[2]) };
+  return { heure: 20, minute: 30 };
 };
 
 const restartScheduler = async () => {

@@ -5,6 +5,8 @@
 
 CREATE DATABASE IF NOT EXISTS mica_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE mica_db;
+-- Lecture du script en UTF-8 (sinon « é » devient « ?? » avec certains clients MySQL sous Windows)
+SET NAMES utf8mb4;
 
 -- ============================================================
 -- 1. ENTREPRISE

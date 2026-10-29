@@ -151,6 +151,7 @@ const archiver = async (rapportId, userId) => {
     date_publication: new Date(),
     updated_by: userId,
   });
+  await require('./notifications.service').notifierRapportPublie(rapport);
   return { message: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} archivé.` };
 };
 
