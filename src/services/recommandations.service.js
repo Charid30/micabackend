@@ -11,10 +11,11 @@
 const { Op } = require('sequelize');
 const { RapportHebdo, Recommandation } = require('../models');
 
-// « Informations utiles » du rapport : changent rarement, donc reprises du dernier rapport qui en contient
-// tant qu'elles n'ont pas ete modifiees pour la semaine.
+// « Informations utiles » : changent rarement, donc proposees dans l'ecran de saisie a partir du dernier
+// rapport qui en contient. Le texte n'entre dans le rapport qu'une fois enregistre pour la semaine ;
+// une saisie enregistree (meme vide) n'est plus remplacee par une reprise.
 const informationsUtiles = async (rapport, row) => {
-  if (row?.informations_utiles) return { texte: row.informations_utiles, reprise: null };
+  if (row) return { texte: row.informations_utiles || '', reprise: null };
   const precedents = await RapportHebdo.findAll({
     where: { del: 0, date_fin: { [Op.lt]: rapport.date_fin } }, order: [['date_fin', 'DESC']], limit: 52,
     attributes: ['id', 'semaine_iso', 'annee'],

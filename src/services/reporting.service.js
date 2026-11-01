@@ -125,14 +125,13 @@ const getReporting = async (rapport) => {
   const codes = trier(produitsRaw.map(p => p.code).filter(c => ORDRE.includes(c)));
   const produits = codes.map(c => produitsRaw.find(p => p.code === c));
 
-  const { informationsUtiles } = require('./recommandations.service');
-  const infos = await informationsUtiles(rapport, reco);
   const v = await ventes(rapport, prec, produits);
 
   return {
     date: rapport.date_fin,
     rapport_precedent: prec ? { semaine_iso: prec.semaine_iso, annee: prec.annee } : null,
-    informations_utiles: lignesTexte(infos.texte),
+    // Seul le texte enregistre pour cette semaine : un texte repris a l'ecran doit d'abord etre confirme
+    informations_utiles: lignesTexte(reco?.informations_utiles),
     stocks: stocks(auto, autoPrec, produits),
     // Evolution des consommations : variation des quantites servies par rapport a la semaine precedente
     evolution_consommations: v.evolution
