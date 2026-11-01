@@ -14,19 +14,23 @@
 const { Op } = require('sequelize');
 const cron = require('node-cron');
 const { JournalAction, Utilisateur } = require('../models');
+const { decrire } = require('./journal-description.service');
 
 const CONSERVATION_JOURS = 730;   // 2 ans
 const METHODES = { POST: 'Création', PUT: 'Modification', PATCH: 'Modification', DELETE: 'Suppression' };
 const MODULES = {
   stocks: 'Stocks dépôts', 'referentiel-stocks': 'Référentiel stocks', finances: 'Trésorerie', corridors: 'Corridors',
+  chargements: 'Corridors', 'encours-livraison': 'Encours', frequences: 'Fréquences de saisie', notifications: 'Notifications',
   encours: 'Dépôts intérieurs', camions: "Temps d'attente", 'veille-marche': 'Veille marché', 'veille-geo': 'Veille géopolitique',
   'achats-traders': 'Achats traders', ventes: 'Ventes', recommandations: 'Recommandations', 'caf-moyen': 'CAF moyen',
   rapports: 'Rapports', utilisateurs: 'Comptes utilisateurs', agents: 'Agents', directions: 'Directions',
   entreprises: 'Entreprises', parametres: 'Paramètres', produits: 'Produits', depots: 'Dépôts', fournisseurs: 'Fournisseurs',
   marketeurs: 'Marketeurs', profil: 'Mon profil', auth: 'Authentification', administration: 'Administration',
 };
-// Routes non journalisees ici : connexion / deconnexion (historique des connexions dedie)
-const IGNOREES = ['/api/auth/login', '/api/auth/logout', '/api/auth/login/2fa'];
+// Routes non journalisees ici : connexion / deconnexion (historique des connexions dedie) ;
+// abonnement aux notifications : rattachement automatique du navigateur a chaque visite, sans interet
+const IGNOREES = ['/api/auth/login', '/api/auth/logout', '/api/auth/login/2fa', '/api/notifications/abonnement'];
+const ROUTES_MASQUEES = IGNOREES.flatMap(r => ['POST', 'DELETE'].map(m => `${m} ${r}`));
 const SECRET = /pass|mot_de_passe|secret|token|jeton|code/i;
 
 // Resume lisible et sans secret du corps de la requete (2000 caracteres maximum)
@@ -45,6 +49,7 @@ const resumer = (valeur, profondeur = 0) => {
 
 const libelleAction = (methode, chemin) => {
   if (/\/archiver$/.test(chemin)) return 'Archivage';
+  if (/\/saisie$/.test(chemin)) return 'Saisie';
   if (/change-password|reset-password/.test(chemin)) return 'Mot de passe';
   if (/2fa/.test(chemin)) return 'Double authentification';
   if (/\/permissions$/.test(chemin)) return 'Permissions';
@@ -57,8 +62,9 @@ const journaliser = (req, res, next) => {
   if (!METHODES[req.method]) return next();
   const chemin = req.originalUrl.split('?')[0];
   if (IGNOREES.includes(chemin)) return next();
-  res.on('finish', () => {
+  res.on('finish', async () => {
     if (!req.user) return;                         // requete refusee avant authentification
+    const description = await decrire(req.method, chemin, req.body).catch(() => null);
     const segments = chemin.replace(/^\/api\//, '').split('/');
     const module = MODULES[segments[0]] || segments[0];
     const id = segments.find(s => /^\d+$/.test(s));
@@ -67,16 +73,31 @@ const journaliser = (req, res, next) => {
     JournalAction.create({
       utilisateur_id: req.user.id, username: req.user.username,
       action: libelleAction(req.method, chemin), module, route: `${req.method} ${chemin}`.slice(0, 255),
-      cible: id ? `n° ${id}` : null, details, statut_http: res.statusCode, succes: res.statusCode < 400 ? 1 : 0,
+      cible: id ? `n° ${id}` : null, description: description ? description.slice(0, 500) : null, details, statut_http: res.statusCode, succes: res.statusCode < 400 ? 1 : 0,
       ip: String(req.ip || '').replace(/^::ffff:/, '').slice(0, 45) || null,
     }).catch(err => console.error('[Journal] Enregistrement impossible :', err.message));
   });
   next();
 };
 
+// Ligne affichee : les anciennes lignes, sans description, sont decrites a partir de leur route et de leur resume
+const presenter = async (r) => {
+  const [methode, chemin = ''] = String(r.route).split(' ');
+  let corps = {};
+  try { corps = JSON.parse(r.details) || {}; } catch { corps = {}; }
+  const module = MODULES[chemin.replace(/^\/api\//, '').split('/')[0]] || r.module;
+  const action = libelleAction(methode, chemin);
+  const description = r.description || await decrire(methode, chemin, corps).catch(() => null);
+  return {
+    id: r.id, le: r.created_at, utilisateur: r.username, action, module, cible: r.cible,
+    description: description || `${action} – ${module}`,
+    route: r.route, details: r.details, statut: r.statut_http, succes: !!r.succes, ip: r.ip,
+  };
+};
+
 // Consultation (administrateurs) : filtres et pagination
 const rechercher = async ({ utilisateur_id, module, action, du, au, succes, page = 1, taille = 50 }) => {
-  const where = {};
+  const where = { route: { [Op.notIn]: ROUTES_MASQUEES } };
   if (utilisateur_id) where.utilisateur_id = utilisateur_id;
   if (module) where.module = module;
   if (action) where.action = action;
@@ -95,10 +116,7 @@ const rechercher = async ({ utilisateur_id, module, action, du, au, succes, page
   ]);
   return {
     total: count, page: p, pages: Math.max(Math.ceil(count / limite), 1),
-    lignes: rows.map(r => ({
-      id: r.id, le: r.created_at, utilisateur: r.username, action: r.action, module: r.module, cible: r.cible,
-      route: r.route, details: r.details, statut: r.statut_http, succes: !!r.succes, ip: r.ip,
-    })),
+    lignes: await Promise.all(rows.map(presenter)),
     filtres: { modules: modules.map(m => m.module), utilisateurs: utilisateurs.map(u => ({ id: u.id, username: u.username })) },
   };
 };

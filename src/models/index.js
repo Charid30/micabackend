@@ -434,6 +434,7 @@ const JournalAction = sequelize.define('JournalAction', {
   module:         { type: DataTypes.STRING(60), allowNull: false },
   route:          { type: DataTypes.STRING(255), allowNull: false },
   cible:          { type: DataTypes.STRING(255), allowNull: true },
+  description:    { type: DataTypes.STRING(500), allowNull: true },
   details:        { type: DataTypes.TEXT, allowNull: true },
   statut_http:    { type: DataTypes.SMALLINT, allowNull: true },
   succes:         { type: DataTypes.TINYINT, defaultValue: 1 },
