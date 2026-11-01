@@ -65,6 +65,8 @@ const profilSession = (user, politique, doubleAuth2 = { requise: false, echeance
   };
 };
 
+const COMPTE_SUSPENDU = { status: 403, message: 'Compte suspendu pour raison de sécurité. Contactez l\'administrateur.' };
+
 const login = async (identifiant, password, ctx = {}) => {
   const user = await Utilisateur.scope('withPassword').findOne({
     where: {
@@ -97,6 +99,9 @@ const login = async (identifiant, password, ctx = {}) => {
     throw INVALID_CREDENTIALS;
   }
 
+  // Message donne seulement apres le bon mot de passe : l'etat du compte n'est pas revele a un inconnu
+  if (user.suspendu_le) throw COMPTE_SUSPENDU;
+
   // Double authentification activee : le mot de passe est correct, le code est demande a l'etape 2
   if (user.totp_secret) {
     await user.update({ failed_login_attempts: 0, locked_until: null });
@@ -107,6 +112,7 @@ const login = async (identifiant, password, ctx = {}) => {
 
 // Session ouverte : derniere connexion, historique, jeton de session
 const ouvrirSession = async (user, ctx, motif) => {
+  if (user.suspendu_le) throw COMPTE_SUSPENDU;
   await user.update({
     failed_login_attempts: 0, locked_until: null,
     derniere_connexion_at: new Date(), derniere_connexion_ip: ctx.ip || null,

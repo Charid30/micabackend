@@ -10,6 +10,7 @@
  * ================================================================== */
 const authService = require('../services/auth.service');
 const { contexteRequete } = require('../services/securite-compte.service');
+const { echecConnexion } = require('../services/intrusion.service');
 const { sendError } = require('../utils/http-error');
 const { COOKIE_NAME, cookieOptions, readCookie } = require('../middleware/auth');
 const COOKIE_2FA = 'mica_2fa';
@@ -33,6 +34,7 @@ exports.login = async (req, res) => {
     // Le jeton n'est jamais exposé au JavaScript du navigateur
     res.json({ utilisateur });
   } catch (err) {
+    if (err.status === 401 || err.status === 423) echecConnexion(req, username.trim());
     sendError(res, err);
   }
 };
@@ -45,6 +47,7 @@ exports.loginDoubleAuth = async (req, res) => {
     setSessionCookie(res, token);
     res.json({ utilisateur });
   } catch (err) {
+    if (err.status === 401 || err.status === 423) echecConnexion(req);
     sendError(res, err);
   }
 };

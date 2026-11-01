@@ -70,6 +70,9 @@ const Utilisateur = sequelize.define('Utilisateur', {
   totp_secret_attente: { type: DataTypes.STRING(255), allowNull: true },
   totp_codes_secours: { type: DataTypes.TEXT, allowNull: true },
   totp_active_le: { type: DataTypes.DATE, allowNull: true },
+  // Compte suspendu automatiquement suite a une attaque (reactivation par un administrateur)
+  suspendu_le: { type: DataTypes.DATE, allowNull: true },
+  suspendu_motif: { type: DataTypes.STRING(120), allowNull: true },
   ...auditFields,
 }, {
   tableName: 'utilisateurs',
@@ -571,9 +574,36 @@ const PushAbonnement = sequelize.define('PushAbonnement', {
   ...auditFields,
 }, { tableName: 'push_abonnements', timestamps: false });
 
+// ── DETECTION D'INTRUSION : attaques detectees et adresses bannies
+const SecuriteEvenement = sequelize.define('SecuriteEvenement', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  type:           { type: DataTypes.STRING(40), allowNull: false },
+  libelle:        { type: DataTypes.STRING(120), allowNull: false },
+  ip:             { type: DataTypes.STRING(45), allowNull: true },
+  utilisateur_id: { type: DataTypes.INTEGER, allowNull: true },
+  username:       { type: DataTypes.STRING(50), allowNull: true },
+  route:          { type: DataTypes.STRING(255), allowNull: true },
+  extrait:        { type: DataTypes.STRING(255), allowNull: true },
+  navigateur:     { type: DataTypes.STRING(255), allowNull: true },
+  mesure:         { type: DataTypes.STRING(120), allowNull: true },
+  created_at:     { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+}, { tableName: 'securite_evenements', timestamps: false });
+
+const IpBannie = sequelize.define('IpBannie', {
+  id:       { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  ip:       { type: DataTypes.STRING(45), allowNull: false, unique: true },
+  motif:    { type: DataTypes.STRING(120), allowNull: false },
+  banni_le: { type: DataTypes.DATE, allowNull: false },
+  actif:    { type: DataTypes.TINYINT, defaultValue: 1 },
+  leve_le:  { type: DataTypes.DATE, allowNull: true },
+  leve_par: { type: DataTypes.STRING(50), allowNull: true },
+}, { tableName: 'ip_bannies', timestamps: false });
+
 module.exports = {
   sequelize,
   PushAbonnement,
+  SecuriteEvenement,
+  IpBannie,
   EncoursLigne,
   EncoursBesoin,
   STATUTS_ENCOURS,

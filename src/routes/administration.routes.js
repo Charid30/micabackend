@@ -46,6 +46,26 @@ router.post('/utilisateurs/:id/reinitialiser-2fa', async (req, res) => {
   } catch (e) { sendError(res, e, 400); }
 });
 
+// ── Detection d'intrusion : attaques detectees, adresses bannies, comptes suspendus
+const intrusion = require('../services/intrusion.service');
+router.get('/intrusions', async (req, res) => {
+  try { res.json(await intrusion.consulter(req.query)); } catch (e) { sendError(res, e); }
+});
+router.delete('/intrusions/ip/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!(id > 0)) return res.status(400).json({ message: 'Identifiant invalide.' });
+    res.json(await intrusion.leverBannissement(id, req.user));
+  } catch (e) { sendError(res, e, 400); }
+});
+router.post('/intrusions/compte/:id/reactiver', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!(id > 0)) return res.status(400).json({ message: 'Identifiant invalide.' });
+    res.json(await intrusion.reactiverCompte(id));
+  } catch (e) { sendError(res, e, 400); }
+});
+
 // ── Reglages de securite (double authentification, validite des mots de passe)
 const securite = require('../services/securite.service');
 const v = require('../middleware/validate');

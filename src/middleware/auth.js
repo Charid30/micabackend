@@ -89,6 +89,7 @@ const authenticate = async (req, res, next) => {
       ],
     });
     if (!user) return res.status(401).json({ message: 'Utilisateur introuvable.' });
+    if (user.suspendu_le) return res.status(401).json({ code: 'COMPTE_SUSPENDU', message: 'Compte suspendu pour raison de sécurité. Contactez l\'administrateur.' });
 
     // Invalidation token après changement de mot de passe
     if (user.password_changed_at) {

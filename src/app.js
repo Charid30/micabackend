@@ -23,9 +23,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
-const { authenticate, requireAjaxHeader, getSessionUserId } = require('./middleware/auth');
+const { requireAjaxHeader, getSessionUserId } = require('./middleware/auth');
 const { sendError } = require('./utils/http-error');
 
 const sequelize = require('./config/database');
@@ -33,6 +32,7 @@ const routes = require('./routes');
 const { startScheduler } = require('./services/scheduler.service');
 const { startSauvegardes } = require('./services/sauvegarde.service');
 const { journaliser, startPurgeJournal } = require('./services/journal.service');
+const intrusion = require('./services/intrusion.service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +53,9 @@ app.use(cors({
 // ── Helmet (sécurité des headers HTTP)
 app.use(helmet());
 
+// ── Adresses bannies : refusees avant tout traitement
+app.use(intrusion.bloquerBannis);
+
 // ── Rate limiting global (15 min)
 //  - agent connecte (session valide) : 1000 requetes PAR COMPTE ; plusieurs agents derriere la meme
 //    adresse IP (reseau du bureau) ne partagent plus un quota commun
@@ -72,18 +75,22 @@ app.use(rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Trop de requêtes, veuillez réessayer plus tard.' },
+  handler: (req, res, next, options) => {
+    if (!getSessionUserId(req)) intrusion.limiteDepassee(req);
+    res.status(options.statusCode).json(options.message);
+  },
 }));
 
 app.use(morgan(isProd ? 'combined' : 'dev'));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// ── Fichiers statiques (rapports PDF) — protégés par auth
-app.use('/storage', authenticate, express.static(path.join(__dirname, '..', 'storage')));
+// ── Detection d'intrusion : analyse de chaque requete (URL, corps, navigateur, jeton)
+app.use(intrusion.detecter);
 
 // ── Routes API (protection CSRF : en-tête X-Requested-With exigé sur les requêtes d'écriture)
 // Journal d'audit : chaque action d'ecriture est enregistree a la fin de la reponse
-app.use('/api', requireAjaxHeader, journaliser, routes);
+app.use('/api', requireAjaxHeader, journaliser, intrusion.surveillerReponses, routes);
 
 // ── Route santé (interne uniquement, pas d'info sensible)
 app.get('/health', (req, res) => res.json({ status: 'OK' }));
@@ -109,8 +116,11 @@ const start = async () => {
     await startScheduler();
     await startSauvegardes();
     startPurgeJournal();
+    await intrusion.startIntrusion();
 
-    app.listen(PORT, () => {
+    // En production, seule l'API derriere Apache est joignable : un acces direct au port permettrait
+    // de falsifier l'adresse transmise (X-Forwarded-For) et de contourner ou detourner le bannissement
+    app.listen(PORT, process.env.HOST || (isProd ? '127.0.0.1' : undefined), () => {
       console.log(`Serveur démarré sur http://localhost:${PORT}`);
     });
   } catch (err) {

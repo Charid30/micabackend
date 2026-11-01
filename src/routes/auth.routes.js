@@ -14,6 +14,7 @@ const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth');
 const v = require('../middleware/validate');
+const { echecConnexion } = require('../services/intrusion.service');
 
 // 10 tentatives max / 15 min par IP sur le login
 const loginLimiter = rateLimit({
@@ -23,6 +24,11 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' },
   skipSuccessfulRequests: true,
+  // Les tentatives au-dela de la limite comptent pour la detection d'intrusion
+  handler: (req, res, next, options) => {
+    echecConnexion(req);
+    res.status(options.statusCode).json(options.message);
+  },
 });
 
 // 5 changements de mot de passe max / 15 min par IP

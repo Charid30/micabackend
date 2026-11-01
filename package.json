@@ -8,7 +8,8 @@
     "dev": "nodemon src/app.js",
     "migrate": "node src/database/migrate.js",
     "migrations": "node src/database/migrate.js",
-    "seed": "node src/database/seeders/index.js"
+    "seed": "node src/database/seeders/index.js",
+    "debannir": "node scripts/debannir.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

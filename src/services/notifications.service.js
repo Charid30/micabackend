@@ -9,7 +9,7 @@
  *  Merci
  * ================================================================== */
 // Notifications push web (standard Web Push, cles VAPID) :
-//  - rapport publie : tous ceux qui peuvent consulter les rapports ;
+//  - rapport publie : tous les utilisateurs ;
 //  - rappel du soir (20h30 par defaut) : saisies quotidiennes du jour non faites, envoye a ceux qui
 //    ont le droit de les saisir (un agent de depot n'est prevenu que pour son depot). Une seule
 //    notification par personne, qui liste ce qui manque.
@@ -99,7 +99,7 @@ const envoyer = async (utilisateurIds, payload) => {
 
 // Utilisateurs actifs avec leurs droits
 const utilisateursActifs = () => Utilisateur.findAll({
-  where: { del: 0 },
+  where: { del: 0, suspendu_le: null },
   attributes: ['id', 'is_admin'],
   include: [{ model: Permission, as: 'permissions', where: { del: 0 }, required: false }],
 });
@@ -110,10 +110,16 @@ const aDroit = (u, module, action, depotId = null) => u.is_admin || (u.permissio
 
 const dateFr = (d) => String(d).split('-').reverse().join('/');
 
+// Alerte de securite : administrateurs actifs
+const alerterAdministrateurs = async (payload) => {
+  const ids = (await utilisateursActifs()).filter(u => u.is_admin).map(u => u.id);
+  return envoyer(ids, payload);
+};
+
 // ── Rapport publie
 const notifierRapportPublie = async (rapport) => {
   try {
-    const ids = (await utilisateursActifs()).filter(u => aDroit(u, 'rapports', 'READ')).map(u => u.id);
+    const ids = (await utilisateursActifs()).map(u => u.id);
     const n = await envoyer(ids, {
       titre: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} disponible`,
       corps: `Le rapport du ${dateFr(rapport.date_debut)} au ${dateFr(rapport.date_fin)} est publié.`,
@@ -210,6 +216,6 @@ const tester = async (user) => {
 };
 
 module.exports = {
-  getClePublique, abonner, desabonner, envoyer, notifierRapportPublie,
+  getClePublique, abonner, desabonner, envoyer, notifierRapportPublie, alerterAdministrateurs,
   saisiesManquantes, rappelerSaisiesManquantes, tester, chargerCles,
 };
