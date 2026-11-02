@@ -22,7 +22,7 @@ const MODULES = {
   stocks: 'Stocks dépôts', 'referentiel-stocks': 'Référentiel stocks', finances: 'Trésorerie', corridors: 'Corridors',
   chargements: 'Corridors', 'encours-livraison': 'Encours', frequences: 'Fréquences de saisie', notifications: 'Notifications',
   encours: 'Dépôts intérieurs', camions: "Temps d'attente", 'veille-marche': 'Veille marché', 'veille-geo': 'Veille géopolitique',
-  'achats-traders': 'Achats traders', ventes: 'Ventes', recommandations: 'Recommandations', 'caf-moyen': 'CAF moyen', centrales: 'Centrale SONABEL',
+  'achats-traders': 'Achats traders', ventes: 'Ventes', recommandations: 'Recommandations', 'caf-moyen': 'CAF moyen', centrales: 'Centrale SONABEL', rdc: 'RDC',
   rapports: 'Rapports', utilisateurs: 'Comptes utilisateurs', agents: 'Agents', directions: 'Directions',
   entreprises: 'Entreprises', parametres: 'Paramètres', produits: 'Produits', depots: 'Dépôts', fournisseurs: 'Fournisseurs',
   marketeurs: 'Marketeurs', profil: 'Mon profil', auth: 'Authentification', administration: 'Administration',

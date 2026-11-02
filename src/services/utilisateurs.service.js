@@ -16,25 +16,32 @@ const MODULES = [
   'stocks', 'impompable', 'referentiel-stocks', 'actions-stocks', 'corridors', 'depots-int', 'temps-attente',
   'veille-marche', 'veille-geo', 'achats-traders', 'encours-livraison', 'ventes',
   'tresorerie', 'tresorerie-lignes', 'recommandations', 'caf_moyen', 'centrales',
-  'rapports', 'administration', 'parametres',
+  'rapports', 'administration', 'parametres', 'dashboard', 'rdc-ghana', 'rdc-benin',
 ];
 
 // Droits reserves a une personne designee : jamais accordes en ecriture par un profil type,
 // l'administrateur les attribue nominativement (ecran Utilisateurs > permissions)
-const MODULES_DESIGNES = ['impompable', 'referentiel-stocks', 'actions-stocks', 'tresorerie-lignes', 'centrales'];
+const MODULES_DESIGNES = ['impompable', 'referentiel-stocks', 'actions-stocks', 'tresorerie-lignes', 'centrales', 'dashboard'];
+
+// Menu RDC : jamais accorde par les profils types, attribue compte par compte
+const MODULES_RDC = ['rdc-ghana', 'rdc-benin'];
+const modulesDesProfils = MODULES.filter(m => m !== 'administration' && !MODULES_RDC.includes(m));
 
 const PROFILS = {
   ADMIN: { is_admin: true, permissions: [] },
   GESTIONNAIRE: {
     is_admin: false,
-    permissions: MODULES.filter(m => m !== 'administration').map(m => ({
+    permissions: modulesDesProfils.map(m => ({
       module: m, action: m === 'rapports' || MODULES_DESIGNES.includes(m) ? 'READ' : 'WRITE',
     })),
   },
   LECTEUR: {
     is_admin: false,
-    permissions: MODULES.filter(m => m !== 'administration').map(m => ({ module: m, action: 'READ' })),
+    permissions: modulesDesProfils.map(m => ({ module: m, action: 'READ' })),
   },
+  // Compte d'un representant : seulement la saisie de son pays
+  RDC_GHANA: { is_admin: false, permissions: [{ module: 'rdc-ghana', action: 'WRITE' }] },
+  RDC_BENIN: { is_admin: false, permissions: [{ module: 'rdc-benin', action: 'WRITE' }] },
 };
 
 const _include = [

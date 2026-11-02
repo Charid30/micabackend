@@ -22,7 +22,7 @@ const MODULES = {
   corridors: 'Corridors', 'depots-int': 'Dépôts intérieurs', 'temps-attente': "Temps d'attente",
   'veille-marche': 'Veille marché', 'veille-geo': 'Veille géopolitique', 'achats-traders': 'Achats traders', 'encours-livraison': 'Encours fournisseurs',
   ventes: 'Ventes', tresorerie: 'Trésorerie (saisie hebdomadaire)', 'tresorerie-lignes': 'Trésorerie : gestion des lignes',
-  recommandations: 'Recommandations', caf_moyen: 'CAF moyen des achats', centrales: 'Centrale SONABEL', rapports: 'Rapports',
+  recommandations: 'Recommandations', caf_moyen: 'CAF moyen des achats', centrales: 'Centrale SONABEL', 'rdc-ghana': 'RDC Ghana', 'rdc-benin': 'RDC Bénin', dashboard: 'Tableau de bord', rapports: 'Rapports',
   administration: 'Administration', parametres: 'Paramètres',
 };
 

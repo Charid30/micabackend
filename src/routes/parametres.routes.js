@@ -40,9 +40,9 @@ router.put('/:id', v.parametre, async (req, res) => {
     }
     const valeur = String(req.body.valeur ?? '').trim();
     if (p.cle === 'NOTIF_SAISIE_HEURE' && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(valeur)) {
-      return res.status(400).json({ message: 'Heure du rappel : format HH:MM attendu (ex. 20:30).' });
+      return res.status(400).json({ message: 'Heure du rappel : format HH:MM attendu (ex. 09:35).' });
     }
-    if (p.cle === 'NOTIF_SAISIE_JOURS' && !/^[1-7](\s*,\s*[1-7])*$/.test(valeur)) {
+    if ((p.cle === 'NOTIF_SAISIE_JOURS' || p.cle === 'NOTIF_RDC_JOURS') && !/^[1-7](\s*,\s*[1-7])*$/.test(valeur)) {
       return res.status(400).json({ message: 'Jours du rappel : chiffres de 1 (lundi) à 7 (dimanche) séparés par des virgules.' });
     }
     await p.update({ valeur: req.body.valeur });

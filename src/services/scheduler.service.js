@@ -84,7 +84,7 @@ const startScheduler = async () => {
 
   console.log(`[Scheduler] Démarré avec l'expression : ${expression}`);
 
-  // Rappel du soir des saisies quotidiennes manquantes (NOTIF_SAISIE_HEURE, 20:30 par defaut)
+  // Rappel des saisies quotidiennes manquantes (NOTIF_SAISIE_HEURE, 09:35 par defaut)
   const { heure, minute } = await heureRappel();
   if (rappelTask) rappelTask.stop();
   rappelTask = cron.schedule(`0 ${minute} ${heure} * * *`,
@@ -99,7 +99,7 @@ const heureRappel = async () => {
   const p = await Parametre.findOne({ where: { cle: 'NOTIF_SAISIE_HEURE', del: 0 } });
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(p?.valeur || '').trim());
   if (m && Number(m[1]) < 24 && Number(m[2]) < 60) return { heure: Number(m[1]), minute: Number(m[2]) };
-  return { heure: 20, minute: 30 };
+  return { heure: 9, minute: 35 };
 };
 
 const restartScheduler = async () => {

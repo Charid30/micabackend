@@ -16,7 +16,7 @@
 // Dans tous les cas, le rapport retient la derniere valeur saisie de la semaine.
 const { Op } = require('sequelize');
 const {
-  Parametre, RapportHebdo, Depot, StockDepot, ChargementCorridor, CamionDepot, TempsAttenteCamion, CentraleSaisie,
+  Parametre, RapportHebdo, Depot, StockDepot, ChargementCorridor, CamionDepot, TempsAttenteCamion, CentraleSaisie, RdcStock,
   VeilleMarche, VeilleGeopolitique, VenteMarketeur, TresorerieSemaine, Recommandation, EncoursLigne, EncoursBesoin,
 } = require('../models');
 
@@ -43,6 +43,9 @@ const MODULES = [
   { code: 'caf-moyen',       libelle: 'CAF moyen',           defaut: 'PERMANENT', verrouille: 'Registre mensuel (année, mois) : chaque valeur reste valable jusqu\'à sa modification.' },
   { code: 'achats-traders',  libelle: 'Achats traders',      defaut: 'PERMANENT', verrouille: 'Registre des achats : chaque achat reste visible jusqu\'à sa suppression.' },
   { code: 'centrales',       libelle: 'Centrale SONABEL',    defaut: 'QUOTIDIEN', model: CentraleSaisie, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
+  // RDC : rappel seulement une fois le pays demarre (filtre), jours reglables a part (NOTIF_RDC_JOURS)
+  { code: 'rdc-ghana',       libelle: 'RDC Ghana',           defaut: 'QUOTIDIEN', model: RdcStock, filtre: { pays: 'GHANA' }, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
+  { code: 'rdc-benin',       libelle: 'RDC Bénin',           defaut: 'QUOTIDIEN', model: RdcStock, filtre: { pays: 'BENIN' }, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
 ];
 
 const cleParametre = (code) => `FREQUENCE_${code.toUpperCase().replace(/-/g, '_')}`;

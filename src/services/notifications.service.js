@@ -9,8 +9,8 @@
  *  Merci
  * ================================================================== */
 // Notifications push web (standard Web Push, cles VAPID) :
-//  - rapport publie : tous les utilisateurs ;
-//  - rappel du soir (20h30 par defaut) : saisies quotidiennes du jour non faites, envoye a ceux qui
+//  - rapport publie : les utilisateurs ayant acces aux rapports ;
+//  - rappel des saisies (09h35 par defaut) : saisies quotidiennes du jour non faites, envoye a ceux qui
 //    ont le droit de les saisir (un agent de depot n'est prevenu que pour son depot). Une seule
 //    notification par personne, qui liste ce qui manque.
 // Cles VAPID : VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (/ VAPID_SUBJECT) dans .env ; a defaut, elles
@@ -119,7 +119,7 @@ const alerterAdministrateurs = async (payload) => {
 // ── Rapport publie
 const notifierRapportPublie = async (rapport) => {
   try {
-    const ids = (await utilisateursActifs()).map(u => u.id);
+    const ids = (await utilisateursActifs()).filter(u => aDroit(u, 'rapports', 'READ')).map(u => u.id);
     const n = await envoyer(ids, {
       titre: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} disponible`,
       corps: `Le rapport du ${dateFr(rapport.date_debut)} au ${dateFr(rapport.date_fin)} est publié.`,
@@ -144,18 +144,22 @@ const ECRANS = {
   recommandations: { droit: 'recommandations', url: '/saisie/recommandations' },
   'encours-livraison': { droit: 'encours-livraison', url: '/saisie/encours-livraison' },
   centrales: { droit: 'centrales', url: '/saisie/centrales' },
+  'rdc-ghana': { droit: 'rdc-ghana', url: '/rdc/ghana' },
+  'rdc-benin': { droit: 'rdc-benin', url: '/rdc/benin' },
 };
 
 // Liste de ce qui manque aujourd'hui : [{ libelle, droit, depot_id, url }]
-const saisiesManquantes = async () => {
+const saisiesManquantes = async (actif = () => true) => {
   const jour = frequence.aujourdhui();
   const manquantes = [];
   for (const m of frequence.MODULES) {
     const ecran = ECRANS[m.code];
-    if (!ecran || !m.model || await frequence.frequenceDe(m.code) !== 'QUOTIDIEN') continue;
+    if (!ecran || !m.model || !actif(m) || await frequence.frequenceDe(m.code) !== 'QUOTIDIEN') continue;
+    // RDC : pas de rappel tant que le pays n'a rien saisi (demarrage coordonne en interne)
+    if (m.filtre && !await m.model.findOne({ where: { ...m.filtre, del: 0 }, attributes: ['id'] })) continue;
     const parDepot = m.code === 'stocks-int' || m.code === 'stocks-ext' || m.code === 'depots-int';
     if (!parDepot) {
-      if (!await m.model.findOne({ where: { date_saisie: jour, del: 0 }, attributes: ['id'] })) {
+      if (!await m.model.findOne({ where: { ...m.filtre, date_saisie: jour, del: 0 }, attributes: ['id'] })) {
         manquantes.push({ libelle: m.libelle, droit: ecran.droit, depot_id: null, url: ecran.url });
       }
       continue;
@@ -174,18 +178,18 @@ const saisiesManquantes = async () => {
   return manquantes;
 };
 
-const joursDuRappel = async () => {
-  const p = await Parametre.findOne({ where: { cle: 'NOTIF_SAISIE_JOURS', del: 0 } });
+const joursDuRappel = async (cle) => {
+  const p = await Parametre.findOne({ where: { cle, del: 0 } });
   return String(p?.valeur ?? '1,2,3,4,5,6,7').split(',').map(s => Number(s.trim())).filter(Boolean);
 };
 
 const rappelerSaisiesManquantes = async ({ force = false } = {}) => {
   try {
     const jourIso = new Date().getUTCDay() || 7;            // Ouagadougou = UTC+0
-    if (!force && !(await joursDuRappel()).includes(jourIso)) return { envoyes: 0, manquantes: [] };
-    const manquantes = await saisiesManquantes();
+    const [jours, joursRdc] = await Promise.all([joursDuRappel('NOTIF_SAISIE_JOURS'), joursDuRappel('NOTIF_RDC_JOURS')]);
+    const manquantes = await saisiesManquantes(m => force || (m.filtre ? joursRdc : jours).includes(jourIso));
     if (!manquantes.length) {
-      console.log('[Push] Rappel du soir : toutes les saisies du jour sont faites');
+      console.log('[Push] Rappel des saisies : rien a signaler aujourd\'hui');
       return { envoyes: 0, manquantes };
     }
     let envoyes = 0;
@@ -199,10 +203,10 @@ const rappelerSaisiesManquantes = async ({ force = false } = {}) => {
         url: siennes[0].url, tag: `saisies-${frequence.aujourdhui()}`,
       });
     }
-    console.log(`[Push] Rappel du soir : ${manquantes.length} saisie(s) manquante(s), ${envoyes} notification(s) envoyee(s)`);
+    console.log(`[Push] Rappel des saisies : ${manquantes.length} saisie(s) manquante(s), ${envoyes} notification(s) envoyee(s)`);
     return { envoyes, manquantes };
   } catch (e) {
-    console.error('[Push] Rappel du soir :', e.message);
+    console.error('[Push] Rappel des saisies :', e.message);
     return { envoyes: 0, manquantes: [] };
   }
 };

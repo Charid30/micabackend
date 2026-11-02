@@ -40,6 +40,7 @@ router.use('/dashboard', authenticate, require('./dashboard.routes'));
 router.use('/recommandations', authenticate, require('./recommandations.routes'));
 router.use('/caf-moyen', authenticate, require('./cafMoyen.routes'));
 router.use('/centrales', authenticate, require('./centrales.routes'));
+router.use('/rdc', authenticate, require('./rdc.routes'));
 router.use('/referentiel-stocks', authenticate, require('./referentiel.routes'));
 router.use('/profil', authenticate, require('./profil.routes'));
 router.use('/notifications', authenticate, require('./notifications.routes'));

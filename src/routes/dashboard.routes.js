@@ -10,8 +10,9 @@
  * ================================================================== */
 const express = require('express');
 const router = express.Router();
+const { authorize } = require('../middleware/auth');
 const dashboardController = require('../controllers/dashboard.controller');
 
-router.get('/synthese', dashboardController.getSynthese);
+router.get('/synthese', authorize('dashboard', 'READ'), dashboardController.getSynthese);
 
 module.exports = router;

@@ -598,6 +598,96 @@ const CentraleParc = sequelize.define('CentraleParc', {
   ...auditFields,
 }, { tableName: 'centrales_parcs', timestamps: false });
 
+// ── RDC (representations des depots cotiers) : depots suivis par pays
+const RdcDepot = sequelize.define('RdcDepot', {
+  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  pays:        { type: DataTypes.STRING(10), allowNull: false },
+  libelle:     { type: DataTypes.STRING(80), allowNull: false },
+  ordre:       { type: DataTypes.INTEGER, defaultValue: 0 },
+  mode_saisie: { type: DataTypes.STRING(10), allowNull: false, defaultValue: 'CALCUL' },
+  ...auditFields,
+}, { tableName: 'rdc_depots', timestamps: false });
+
+// ── RDC : destinations des chargements, rattachees a une colonne du tableau des tonnes
+const RdcDestination = sequelize.define('RdcDestination', {
+  id:      { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  pays:    { type: DataTypes.STRING(10), allowNull: false },
+  libelle: { type: DataTypes.STRING(80), allowNull: false },
+  colonne: { type: DataTypes.STRING(10), allowNull: false },
+  ...auditFields,
+}, { tableName: 'rdc_destinations', timestamps: false });
+
+// ── RDC : stock d'un depot pour un produit et un jour
+const RdcStock = sequelize.define('RdcStock', {
+  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  pays:        { type: DataTypes.STRING(10), allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: false },
+  depot_id:    { type: DataTypes.INTEGER, allowNull: false },
+  produit:     { type: DataTypes.STRING(10), allowNull: false },
+  volume:      { type: DataTypes.DECIMAL(14, 3), allowNull: true },
+  ...auditFields,
+}, { tableName: 'rdc_stocks', timestamps: false });
+
+// ── RDC : camions-citernes en attente sur parking
+const RdcAttente = sequelize.define('RdcAttente', {
+  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: false },
+  depot_id:    { type: DataTypes.INTEGER, allowNull: false },
+  produit:     { type: DataTypes.STRING(10), allowNull: false },
+  camions:     { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  ...auditFields,
+}, { tableName: 'rdc_attentes', timestamps: false });
+
+// ── RDC : besoins en camions par produit
+const RdcBesoin = sequelize.define('RdcBesoin', {
+  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  pays:        { type: DataTypes.STRING(10), allowNull: false },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: false },
+  produit:     { type: DataTypes.STRING(10), allowNull: false },
+  quantite:    { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  repartition: { type: DataTypes.STRING(255), allowNull: true },
+  ...auditFields,
+}, { tableName: 'rdc_besoins', timestamps: false });
+
+// ── RDC : chargement d'un camion. bon est vide sur une ligne supprimee (le numero reste dans
+// bon_origine) : l'unicite du bon par depot ne bloque pas une nouvelle saisie du meme numero.
+const RdcChargement = sequelize.define('RdcChargement', {
+  id:              { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  date_chargement: { type: DataTypes.DATEONLY, allowNull: false },
+  depot_id:        { type: DataTypes.INTEGER, allowNull: false },
+  produit:         { type: DataTypes.STRING(10), allowNull: false },
+  bon:             { type: DataTypes.STRING(40), allowNull: true },
+  bon_origine:     { type: DataTypes.STRING(40), allowNull: true },
+  commande:        { type: DataTypes.STRING(40), allowNull: true },
+  tracteur:        { type: DataTypes.STRING(20), allowNull: true },
+  remorque:        { type: DataTypes.STRING(20), allowNull: true },
+  destination:     { type: DataTypes.STRING(80), allowNull: false },
+  temperature:     { type: DataTypes.DECIMAL(5, 2), allowNull: true },
+  densite:         { type: DataTypes.DECIMAL(7, 2), allowNull: true },
+  volume_ambiant:  { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  quantite_20:     { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  quantite_kg:     { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  vcf_depot:       { type: DataTypes.DECIMAL(9, 7), allowNull: true },
+  vcf:             { type: DataTypes.DECIMAL(9, 7), allowNull: true },
+  volume_15:       { type: DataTypes.DECIMAL(12, 3), allowNull: true },
+  tonnes_vide:     { type: DataTypes.DECIMAL(12, 3), allowNull: true },
+  tonnes_air:      { type: DataTypes.DECIMAL(12, 3), allowNull: true },
+  ...auditFields,
+}, { tableName: 'rdc_chargements', timestamps: false });
+
+// ── RDC : receptions de produit
+const RdcReception = sequelize.define('RdcReception', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  date_reception: { type: DataTypes.DATEONLY, allowNull: false },
+  fournisseur:    { type: DataTypes.STRING(120), allowNull: false },
+  depot_id:       { type: DataTypes.INTEGER, allowNull: false },
+  produit:        { type: DataTypes.STRING(10), allowNull: false },
+  quantite:       { type: DataTypes.DECIMAL(14, 3), allowNull: false },
+  unite:          { type: DataTypes.STRING(4), allowNull: false },
+  statut:         { type: DataTypes.STRING(10), allowNull: false },
+  ...auditFields,
+}, { tableName: 'rdc_receptions', timestamps: false });
+
 // ── NOTIFICATIONS PUSH : un abonnement par navigateur
 const PushAbonnement = sequelize.define('PushAbonnement', {
   id:               { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -681,4 +771,11 @@ module.exports = {
   CentraleCuve,
   CentraleSaisie,
   CentraleParc,
+  RdcDepot,
+  RdcDestination,
+  RdcStock,
+  RdcAttente,
+  RdcBesoin,
+  RdcChargement,
+  RdcReception,
 };

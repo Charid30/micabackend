@@ -110,6 +110,21 @@ const decrireReferentiel = async (methode, cle, id, corps) => {
   return `${methode === 'DELETE' ? 'Suppression' : 'Modification'} ${e.le} ${nom}`;
 };
 
+const RDC_PAYS = { ghana: 'Ghana', benin: 'Bénin' };
+const RDC_OBJETS = { chargements: 'du chargement', receptions: 'de la réception' };
+
+// /rdc/<pays>/etat, /rdc/<pays>/chargements[/id], /rdc/<pays>/receptions[/id], /rdc/<pays>/destinations[/id]
+const decrireRdc = (methode, [, pays, objet, id], c) => {
+  const nom = RDC_PAYS[pays] || pays;
+  if (objet === 'etat') return `Saisie de l'état RDC ${nom}${/^\d{4}-\d{2}-\d{2}$/.test(c.date) ? ` du ${c.date.split('-').reverse().join('/')}` : ''}`;
+  if (objet === 'destinations') return `${id ? 'Modification' : 'Ajout'} d'une destination RDC ${nom}${c.libelle ? ` : ${String(c.libelle).slice(0, 80)}` : ''}`;
+  const de = RDC_OBJETS[objet];
+  if (!de) return null;
+  const verbe = methode === 'DELETE' ? 'Suppression' : id ? 'Modification' : 'Ajout';
+  const detail = c.bon ? ` (bon ${String(c.bon).slice(0, 40)})` : id ? ` (n° ${id})` : '';
+  return `${verbe} ${de} RDC ${nom}${detail}`;
+};
+
 /** Phrase decrivant une requete d'ecriture ; null si elle n'est pas connue (libelle generique a l'affichage) */
 const decrire = async (methode, chemin, corps) => {
   const c = corps && typeof corps === 'object' ? corps : {};
@@ -120,6 +135,7 @@ const decrire = async (methode, chemin, corps) => {
   const fixe = FIXES[`${methode} ${segments.join('/')}`];
   if (fixe) return fixe;
   if (deux === 'saisie' && SAISIES[racine]) return decrireSaisie(racine, c);
+  if (racine === 'rdc') return decrireRdc(methode, segments, c);
 
   if (racine === 'rapports' && id) {
     const sem = await semaine(id);
