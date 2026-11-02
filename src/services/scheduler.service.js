@@ -58,6 +58,7 @@ const publierRapportSemaine = async () => {
     }
     // Notification push : seulement le plus recent si plusieurs semaines sont rattrapees
     await require('./notifications.service').notifierRapportPublie(aPublier[aPublier.length - 1]);
+    require('./temps-reel.service').diffuser('rapports');
     return aPublier;
   } catch (err) {
     console.error('[Scheduler] Erreur lors de la publication :', err.message);

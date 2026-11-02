@@ -143,6 +143,7 @@ const ECRANS = {
   tresorerie: { droit: 'tresorerie', url: '/saisie/tresorerie' },
   recommandations: { droit: 'recommandations', url: '/saisie/recommandations' },
   'encours-livraison': { droit: 'encours-livraison', url: '/saisie/encours-livraison' },
+  centrales: { droit: 'centrales', url: '/saisie/centrales' },
 };
 
 // Liste de ce qui manque aujourd'hui : [{ libelle, droit, depot_id, url }]

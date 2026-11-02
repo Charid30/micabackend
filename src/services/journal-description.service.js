@@ -45,6 +45,7 @@ const SAISIES = {
   'caf-moyen': { titre: 'Saisie du CAF moyen', lignes: 'entries' },
   'achats-traders': { titre: 'Saisie des achats traders', lignes: 'achats', unite: 'achat' },
   'encours-livraison': { titre: 'Saisie des encours fournisseurs', lignes: 'lignes' },
+  centrales: { titre: 'Saisie des centrales SONABEL' },
 };
 
 const FIXES = {
@@ -95,6 +96,8 @@ const decrireSaisie = async (cle, corps) => {
   const s = SAISIES[cle];
   const n = s.lignes ? nombre(corps[s.lignes]) : 0;
   const quoi = cle === 'stocks' ? await depotsSaisis(corps.lignes) : null;
+  // Saisie datee (centrales) : le jour concerne plutot que la semaine
+  if (/^\d{4}-\d{2}-\d{2}$/.test(corps.date)) return `${s.titre} du ${corps.date.split('-').reverse().join('/')}`;
   const sem = await semaine(corps.rapport_id);
   const compte = n ? pluriel(n, s.unite) : null;
   return `${s.titre}${quoi ? ` : ${quoi}` : ''}${[compte, sem].filter(Boolean).length ? ` (${[compte, sem].filter(Boolean).join(', ')})` : ''}`;

@@ -16,7 +16,7 @@
 // Dans tous les cas, le rapport retient la derniere valeur saisie de la semaine.
 const { Op } = require('sequelize');
 const {
-  Parametre, RapportHebdo, Depot, StockDepot, ChargementCorridor, CamionDepot, TempsAttenteCamion,
+  Parametre, RapportHebdo, Depot, StockDepot, ChargementCorridor, CamionDepot, TempsAttenteCamion, CentraleSaisie,
   VeilleMarche, VeilleGeopolitique, VenteMarketeur, TresorerieSemaine, Recommandation, EncoursLigne, EncoursBesoin,
 } = require('../models');
 
@@ -42,6 +42,7 @@ const MODULES = [
   // Registres : pas rattaches a une semaine, la frequence ne s'applique pas
   { code: 'caf-moyen',       libelle: 'CAF moyen',           defaut: 'PERMANENT', verrouille: 'Registre mensuel (année, mois) : chaque valeur reste valable jusqu\'à sa modification.' },
   { code: 'achats-traders',  libelle: 'Achats traders',      defaut: 'PERMANENT', verrouille: 'Registre des achats : chaque achat reste visible jusqu\'à sa suppression.' },
+  { code: 'centrales',       libelle: 'Centrale SONABEL',    defaut: 'QUOTIDIEN', model: CentraleSaisie, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
 ];
 
 const cleParametre = (code) => `FREQUENCE_${code.toUpperCase().replace(/-/g, '_')}`;

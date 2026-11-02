@@ -15,13 +15,13 @@ const { validatePasswordStrength } = require('./auth.service');
 const MODULES = [
   'stocks', 'impompable', 'referentiel-stocks', 'actions-stocks', 'corridors', 'depots-int', 'temps-attente',
   'veille-marche', 'veille-geo', 'achats-traders', 'encours-livraison', 'ventes',
-  'tresorerie', 'tresorerie-lignes', 'recommandations', 'caf_moyen',
+  'tresorerie', 'tresorerie-lignes', 'recommandations', 'caf_moyen', 'centrales',
   'rapports', 'administration', 'parametres',
 ];
 
 // Droits reserves a une personne designee : jamais accordes en ecriture par un profil type,
 // l'administrateur les attribue nominativement (ecran Utilisateurs > permissions)
-const MODULES_DESIGNES = ['impompable', 'referentiel-stocks', 'actions-stocks', 'tresorerie-lignes'];
+const MODULES_DESIGNES = ['impompable', 'referentiel-stocks', 'actions-stocks', 'tresorerie-lignes', 'centrales'];
 
 const PROFILS = {
   ADMIN: { is_admin: true, permissions: [] },

@@ -562,6 +562,42 @@ const EncoursBesoin = sequelize.define('EncoursBesoin', {
   ...auditFields,
 }, { tableName: 'encours_besoins', timestamps: false });
 
+// ── CENTRALES SONABEL : une ligne par centrale et combustible
+const CentraleCuve = sequelize.define('CentraleCuve', {
+  id:                { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  centrale:          { type: DataTypes.STRING(80), allowNull: false },
+  combustible:       { type: DataTypes.STRING(10), allowNull: false },
+  ordre:             { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  capacite:          { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  besoin_journalier: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  observation:       { type: DataTypes.STRING(255), allowNull: true },
+  ...auditFields,
+}, { tableName: 'centrales_cuves', timestamps: false });
+
+// ── CENTRALES SONABEL : situation d'un jour
+const CentraleSaisie = sequelize.define('CentraleSaisie', {
+  id:                { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  date_saisie:       { type: DataTypes.DATEONLY, allowNull: false },
+  cuve_id:           { type: DataTypes.INTEGER, allowNull: false },
+  capacite:          { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  stock:             { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  besoin_journalier: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  camions_attente:   { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  observation:       { type: DataTypes.STRING(255), allowNull: true },
+  ...auditFields,
+}, { tableName: 'centrales_saisies', timestamps: false });
+
+// ── CENTRALES SONABEL : camions-citernes sur les parcs
+const CentraleParc = sequelize.define('CentraleParc', {
+  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  date_saisie: { type: DataTypes.DATEONLY, allowNull: false },
+  parc:        { type: DataTypes.STRING(20), allowNull: false },
+  camions_hfo: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  camions_ddo: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  observation: { type: DataTypes.STRING(255), allowNull: true },
+  ...auditFields,
+}, { tableName: 'centrales_parcs', timestamps: false });
+
 // ── NOTIFICATIONS PUSH : un abonnement par navigateur
 const PushAbonnement = sequelize.define('PushAbonnement', {
   id:               { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -642,4 +678,7 @@ module.exports = {
   ActionStock,
   Recommandation,
   CafMoyenAchat,
+  CentraleCuve,
+  CentraleSaisie,
+  CentraleParc,
 };

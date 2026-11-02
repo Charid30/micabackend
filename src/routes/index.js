@@ -39,9 +39,12 @@ router.use('/historique', authenticate, require('./historique.routes'));
 router.use('/dashboard', authenticate, require('./dashboard.routes'));
 router.use('/recommandations', authenticate, require('./recommandations.routes'));
 router.use('/caf-moyen', authenticate, require('./cafMoyen.routes'));
+router.use('/centrales', authenticate, require('./centrales.routes'));
 router.use('/referentiel-stocks', authenticate, require('./referentiel.routes'));
 router.use('/profil', authenticate, require('./profil.routes'));
 router.use('/notifications', authenticate, require('./notifications.routes'));
+// Rafraichissement automatique : flux des signaux d'enregistrement
+router.get('/evenements', authenticate, require('../services/temps-reel.service').connecter);
 router.use('/administration', authenticate, require('./administration.routes'));
 
 module.exports = router;

@@ -170,6 +170,9 @@ const sanctionner = async (req, { type, libelle, extrait = null }, utilisateurId
       mesure,
     });
     console.warn(`[Intrusion] ${type} depuis ${ip} : ${mesure}`);
+    const tempsReel = require('./temps-reel.service');
+    tempsReel.fermer({ utilisateurId, ip: locale ? null : ip });
+    tempsReel.diffuser('intrusions');
     alerter(libelle, ip, mesure);
   } catch (e) {
     console.error('[Intrusion] Enregistrement impossible :', e.message);

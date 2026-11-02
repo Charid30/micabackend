@@ -33,6 +33,7 @@ const { startScheduler } = require('./services/scheduler.service');
 const { startSauvegardes } = require('./services/sauvegarde.service');
 const { journaliser, startPurgeJournal } = require('./services/journal.service');
 const intrusion = require('./services/intrusion.service');
+const { signalerEcritures } = require('./services/temps-reel.service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,7 +47,7 @@ const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:4200';
 app.use(cors({
   origin: allowedOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Onglet'],
   credentials: true, // cookie de session HttpOnly
 }));
 
@@ -90,7 +91,7 @@ app.use(intrusion.detecter);
 
 // ── Routes API (protection CSRF : en-tête X-Requested-With exigé sur les requêtes d'écriture)
 // Journal d'audit : chaque action d'ecriture est enregistree a la fin de la reponse
-app.use('/api', requireAjaxHeader, journaliser, intrusion.surveillerReponses, routes);
+app.use('/api', requireAjaxHeader, journaliser, signalerEcritures, intrusion.surveillerReponses, routes);
 
 // ── Route santé (interne uniquement, pas d'info sensible)
 app.get('/health', (req, res) => res.json({ status: 'OK' }));
