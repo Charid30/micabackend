@@ -644,7 +644,7 @@ const RdcBesoin = sequelize.define('RdcBesoin', {
   pays:        { type: DataTypes.STRING(10), allowNull: false },
   date_saisie: { type: DataTypes.DATEONLY, allowNull: false },
   produit:     { type: DataTypes.STRING(10), allowNull: false },
-  quantite:    { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  quantite:    { type: DataTypes.INTEGER, allowNull: true },
   repartition: { type: DataTypes.STRING(255), allowNull: true },
   ...auditFields,
 }, { tableName: 'rdc_besoins', timestamps: false });
@@ -679,6 +679,9 @@ const RdcChargement = sequelize.define('RdcChargement', {
 const RdcReception = sequelize.define('RdcReception', {
   id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   date_reception: { type: DataTypes.DATEONLY, allowNull: false },
+  date_fin:       { type: DataTypes.DATEONLY, allowNull: true },
+  numero_eme:     { type: DataTypes.STRING(40), allowNull: true },
+  accostage:      { type: DataTypes.STRING(80), allowNull: true },
   fournisseur:    { type: DataTypes.STRING(120), allowNull: false },
   depot_id:       { type: DataTypes.INTEGER, allowNull: false },
   produit:        { type: DataTypes.STRING(10), allowNull: false },

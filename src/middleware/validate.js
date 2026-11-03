@@ -12,7 +12,7 @@
 // Chaque export est un tableau de middlewares à placer avant le contrôleur.
 const { body, param, validationResult } = require('express-validator');
 
-const PROFILS = ['ADMIN', 'GESTIONNAIRE', 'LECTEUR', 'RDC_GHANA', 'RDC_BENIN'];
+const PROFILS = ['ADMIN', 'GESTIONNAIRE', 'LECTEUR', 'RDC_GHANA', 'RDC_BENIN', 'RDC_COTE_IVOIRE'];
 const ACTIONS = ['READ', 'WRITE', 'NONE'];
 
 // Renvoie la première erreur sous forme { message }

@@ -46,6 +46,7 @@ const MODULES = [
   // RDC : rappel seulement une fois le pays demarre (filtre), jours reglables a part (NOTIF_RDC_JOURS)
   { code: 'rdc-ghana',       libelle: 'RDC Ghana',           defaut: 'QUOTIDIEN', model: RdcStock, filtre: { pays: 'GHANA' }, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
   { code: 'rdc-benin',       libelle: 'RDC Bénin',           defaut: 'QUOTIDIEN', model: RdcStock, filtre: { pays: 'BENIN' }, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
+  { code: 'rdc-cote-ivoire', libelle: 'RDC Côte d\'Ivoire',   defaut: 'QUOTIDIEN', model: RdcStock, filtre: { pays: 'CI' }, verrouille: 'Suivi quotidien : chaque jour a sa propre situation.' },
 ];
 
 const cleParametre = (code) => `FREQUENCE_${code.toUpperCase().replace(/-/g, '_')}`;

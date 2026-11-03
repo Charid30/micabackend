@@ -8,7 +8,7 @@
  *  Projet : MICA – SONABHY
  *  Merci
  * ================================================================== */
-// Menu RDC : un droit par pays (rdc-ghana, rdc-benin) ; les destinations sont gerees par les administrateurs
+// Menu RDC : un droit par pays (rdc-ghana, rdc-benin, rdc-cote-ivoire) ; les destinations sont gerees par les administrateurs
 const express = require('express');
 const router = express.Router();
 const { authorize } = require('../middleware/auth');

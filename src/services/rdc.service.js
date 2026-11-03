@@ -22,19 +22,27 @@ const {
 } = require('../models');
 const { aujourdhui } = require('./frequence.service');
 
-const PAYS = { ghana: 'GHANA', benin: 'BENIN' };
+const PAYS = { ghana: 'GHANA', benin: 'BENIN', 'cote-ivoire': 'CI' };
 const PRODUITS = [
   { code: 'SUPER', libelle: 'Super' }, { code: 'PETROLE', libelle: 'Pétrole' }, { code: 'GASOIL', libelle: 'Gasoil' },
   { code: 'DDO', libelle: 'DDO' }, { code: 'FUEL', libelle: 'Fuel 180' }, { code: 'JET', libelle: 'Jet A1' },
   { code: 'BUTANE', libelle: 'Butane' },
 ];
-const COLONNES = [
-  { code: 'BINGO', libelle: 'Bingo' }, { code: 'BOBO', libelle: 'Bobo' }, { code: 'SONABEL', libelle: 'SONABEL' },
-  { code: 'MINES', libelle: 'Mines' }, { code: 'AVIATION', libelle: 'Aviation' }, { code: 'A_CLASSER', libelle: 'À classer' },
+// Colonnes du tableau des tonnes, selon l'etat de chaque pays
+const BINGO = { code: 'BINGO', libelle: 'Bingo' };
+const BOBO = { code: 'BOBO', libelle: 'Bobo' };
+const PENI = { code: 'PENI', libelle: 'Péni' };
+const FIN_COLONNES = [
+  { code: 'SONABEL', libelle: 'SONABEL' }, { code: 'MINES', libelle: 'Mines' }, { code: 'AVIATION', libelle: 'Aviation' },
+  { code: 'A_CLASSER', libelle: 'À classer' },
 ];
+const COLONNES = {
+  GHANA: [BINGO, BOBO, ...FIN_COLONNES], BENIN: [BINGO, PENI, ...FIN_COLONNES], CI: [BINGO, BOBO, PENI, ...FIN_COLONNES],
+};
 const UNITES = ['TM', 'M3'];
 const STATUTS = ['PREVU', 'EN_COURS', 'LIVRE'];
 const VOLUME_MAX = 1000000000;
+const BESOIN_MAX = 100000;
 const ENTIER_MAX = 4000000000;      // INT UNSIGNED
 const JOURS_RECEPTIONS = 30;        // receptions reprises dans l'etat du jour
 const TEMPERATURE_REFERENCE = 15;
@@ -66,7 +74,7 @@ const nombre = (v, libelle, { min = 0, max = VOLUME_MAX, entier = false } = {}) 
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
   if (!Number.isFinite(n) || n < min || n > max || (entier && !Number.isInteger(n))) {
-    throw erreur(`${libelle} : ${entier ? 'un nombre entier positif' : `une valeur entre ${min} et ${max}`} est attendu${entier ? '' : 'e'}.`);
+    throw erreur(`${libelle} : ${entier ? `un nombre entier${min === 0 ? ' positif' : ''}` : `une valeur entre ${min} et ${max}`} est attendu${entier ? '' : 'e'}.`);
   }
   return n;
 };
@@ -160,7 +168,7 @@ const colonnesDes = async (pays) => {
   return { destinations, colonneDe: (destination) => map.get(cleTexte(destination)) || 'A_CLASSER' };
 };
 
-const ouvertures = async (pays) => ({ produits: PRODUITS, colonnes: COLONNES, depots: await depotsDu(pays) });
+const ouvertures = async (pays) => ({ produits: PRODUITS, colonnes: COLONNES[pays], depots: await depotsDu(pays) });
 
 // ── Etat du jour
 const getEtat = async (slug, date = aujourdhui()) => {
@@ -226,11 +234,11 @@ const saveEtat = async (slug, { date, stocks, attentes, besoins }, userId) => {
   const pays = paysDe(slug);
   pasDansLeFutur(date);
   const depots = await depotsDu(pays);
-  const lignesStocks = cellulesValides(stocks, depots).map(c => ({ ...c, volume: nombre(c.volume, 'Stock') }));
+  const lignesStocks = cellulesValides(stocks, depots).map(c => ({ ...c, volume: nombre(c.volume, 'Stock', { min: -VOLUME_MAX }) }));
   const lignesAttentes = cellulesValides(attentes, depots).map(c => ({ ...c, camions: nombre(c.camions, 'Camions en attente', { entier: true, max: 100000 }) }));
   const lignesBesoins = (Array.isArray(besoins) ? besoins : []).slice(0, PRODUITS.length).map(b => ({
     produit: produitValide(b?.produit),
-    quantite: nombre(b?.quantite, 'Besoin en camions', { entier: true, max: 100000 }),
+    quantite: nombre(b?.quantite, 'Besoin en camions', { entier: true, min: -BESOIN_MAX, max: BESOIN_MAX }),
     repartition: texte(b?.repartition, 255),
   }));
 
@@ -346,7 +354,8 @@ const supprimerChargement = async (slug, id, userId) => {
 
 // ── Receptions
 const ligneReception = (r, depots) => ({
-  id: r.id, date_reception: r.date_reception, fournisseur: r.fournisseur, depot_id: r.depot_id,
+  id: r.id, date_reception: r.date_reception, date_fin: r.date_fin, numero_eme: r.numero_eme, accostage: r.accostage,
+  fournisseur: r.fournisseur, depot_id: r.depot_id,
   depot: depots.find(d => d.id === r.depot_id)?.libelle || '', produit: r.produit,
   quantite: Number(r.quantite), unite: r.unite, statut: r.statut,
 });
@@ -370,8 +379,12 @@ const valeursReception = async (pays, corps) => {
   if (!fournisseur) throw erreur('Le fournisseur est obligatoire.');
   if (!UNITES.includes(corps?.unite)) throw erreur('Unité inconnue.');
   if (!STATUTS.includes(corps?.statut)) throw erreur('Statut inconnu.');
+  const dateReception = verifierDate(corps?.date_reception);
+  const dateFin = corps?.date_fin ? verifierDate(corps.date_fin) : null;
+  if (dateFin && dateFin < dateReception) throw erreur('La fin de la période précède son début.');
   return {
-    date_reception: verifierDate(corps?.date_reception), fournisseur, depot_id: depot.id,
+    date_reception: dateReception, date_fin: dateFin, numero_eme: texte(corps?.numero_eme, 40), accostage: texte(corps?.accostage, 80),
+    fournisseur, depot_id: depot.id,
     produit: produitValide(corps?.produit), unite: corps.unite, statut: corps.statut,
     quantite: requis(nombre(corps?.quantite, 'Quantité'), 'Quantité'),
   };
@@ -403,8 +416,8 @@ const supprimerReception = async (slug, id, userId) => {
 };
 
 // ── Destinations (administrateurs)
-const colonneValide = (code) => {
-  if (!COLONNES.some(c => c.code === code)) throw erreur('Colonne inconnue.');
+const colonneValide = (pays, code) => {
+  if (!COLONNES[pays].some(c => c.code === code)) throw erreur('Colonne inconnue.');
   return code;
 };
 
@@ -412,7 +425,7 @@ const ajouterDestination = async (slug, corps, userId) => {
   const pays = paysDe(slug);
   const libelle = texte(corps?.libelle, 80);
   if (!libelle) throw erreur('Le nom de la destination est obligatoire.');
-  const colonne = colonneValide(corps?.colonne);
+  const colonne = colonneValide(pays, corps?.colonne);
   const existante = await RdcDestination.findOne({ where: { pays, libelle } });
   if (existante && !existante.del) throw erreur('Cette destination existe déjà.');
   if (existante) await existante.update({ colonne, del: 0, updated_by: userId, updated_at: new Date() });
@@ -421,9 +434,10 @@ const ajouterDestination = async (slug, corps, userId) => {
 };
 
 const modifierDestination = async (slug, id, corps, userId) => {
-  const d = await RdcDestination.findOne({ where: { id: Number(id) || 0, pays: paysDe(slug), del: 0 } });
+  const pays = paysDe(slug);
+  const d = await RdcDestination.findOne({ where: { id: Number(id) || 0, pays, del: 0 } });
   if (!d) throw erreur('Destination introuvable.', 404);
-  await d.update({ colonne: colonneValide(corps?.colonne), updated_by: userId, updated_at: new Date() });
+  await d.update({ colonne: colonneValide(pays, corps?.colonne), updated_by: userId, updated_at: new Date() });
   return { message: 'Destination modifiée.' };
 };
 
