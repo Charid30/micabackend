@@ -160,6 +160,10 @@ const decrire = async (methode, chemin, corps) => {
       const b = await IpBannie.findByPk(id).catch(() => null);
       return `Déblocage de l'adresse ${b?.ip || `n° ${id}`}`;
     }
+    if (deux === 'interims') {
+      if (!id) return `Nouvel intérim : ${await nomDe(ENTITES.utilisateurs, c.interimaire_id)} remplace ${await nomDe(ENTITES.utilisateurs, c.titulaire_id)}`;
+      return quatre === 'arreter' ? `Fin de l'intérim n° ${id}` : `Modification de l'intérim n° ${id}`;
+    }
     if (deux === 'intrusions' && trois === 'compte') return `Réactivation du compte ${await nomDe(ENTITES.utilisateurs, id)}`;
   }
   if (ENTITES[racine] && !trois) return decrireReferentiel(methode, racine, id, c);

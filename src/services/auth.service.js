@@ -62,6 +62,8 @@ const profilSession = (user, politique, doubleAuth2 = { requise: false, echeance
     double_auth_active: !!user.totp_active_le,
     agent: user.agent,
     permissions: user.permissions,
+    // Interims assures en ce moment : droits recus (permissions marquees interim_de) et bandeau
+    interims: user.interims || [],
   };
 };
 
@@ -118,6 +120,7 @@ const ouvrirSession = async (user, ctx, motif) => {
     derniere_connexion_at: new Date(), derniere_connexion_ip: ctx.ip || null,
   });
   await journaliserConnexion(user.id, true, motif, ctx);
+  await require('./interim.service').completerUtilisateur(user, { depot: true });
   const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
   return { token: issueToken(user), utilisateur: profilSession(user, await chargerPolitique(), ex) };
 };
@@ -152,6 +155,7 @@ const loginDoubleAuth = async (jeton2fa, code, ctx = {}) => {
 const getMe = async (userId) => {
   const user = await Utilisateur.findOne({ where: { id: userId, del: 0 }, include: _userIncludes });
   if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
+  await require('./interim.service').completerUtilisateur(user, { depot: true });
   const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
   return profilSession(user, await chargerPolitique(), ex);
 };

@@ -86,4 +86,4 @@ const updateProfil = async (userId, { email, tel, mot_de_passe_actuel }) => {
   return { message: 'Vos informations ont été enregistrées.', email: user.email, tel: user.tel || '' };
 };
 
-module.exports = { getProfil, updateProfil };
+module.exports = { getProfil, updateProfil, LIBELLES: MODULES };

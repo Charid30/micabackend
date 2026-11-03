@@ -598,6 +598,22 @@ const CentraleParc = sequelize.define('CentraleParc', {
   ...auditFields,
 }, { tableName: 'centrales_parcs', timestamps: false });
 
+// ── INTERIM : droits d'un agent absent confies a un autre compte pour une periode
+const Interim = sequelize.define('Interim', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  titulaire_id:   { type: DataTypes.INTEGER, allowNull: false },
+  interimaire_id: { type: DataTypes.INTEGER, allowNull: false },
+  date_debut:     { type: DataTypes.DATEONLY, allowNull: false },
+  date_fin:       { type: DataTypes.DATEONLY, allowNull: false },
+  motif:          { type: DataTypes.STRING(255), allowNull: true },
+  modules_exclus: { type: DataTypes.STRING(1000), allowNull: true },
+  termine_le:     { type: DataTypes.DATE, allowNull: true },
+  termine_by:     { type: DataTypes.INTEGER, allowNull: true },
+  ...auditFields,
+}, { tableName: 'interims', timestamps: false });
+Interim.belongsTo(Utilisateur, { foreignKey: 'titulaire_id', as: 'titulaire' });
+Interim.belongsTo(Utilisateur, { foreignKey: 'interimaire_id', as: 'interimaire' });
+
 // ── RDC (representations des depots cotiers) : depots suivis par pays
 const RdcDepot = sequelize.define('RdcDepot', {
   id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -774,6 +790,7 @@ module.exports = {
   CentraleCuve,
   CentraleSaisie,
   CentraleParc,
+  Interim,
   RdcDepot,
   RdcDestination,
   RdcStock,

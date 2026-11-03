@@ -19,10 +19,13 @@ const { frequenceDe, ecrireLigne } = require('./frequence.service');
 const today = () => new Date().toISOString().split('T')[0];
 const MAX_ACTION = 2000;
 
-// Depot auquel l'utilisateur est limite pour la saisie des stocks (null = tous)
-const depotRestreint = (user) => {
+// Depots auxquels l'utilisateur est limite (null = tous) : en lecture, tous des qu'un droit Stocks n'est pas
+// limite a un depot ; en ecriture, seuls les droits WRITE comptent. Un interim peut ajouter un depot.
+const depotsRestreints = (user, ecriture = false) => {
   if (user.is_admin) return null;
-  return (user.permissions || []).find(p => p.module === 'stocks' && p.depot_id)?.depot_id || null;
+  const perms = (user.permissions || []).filter(p => p.module === 'stocks' && (!ecriture || p.action === 'WRITE'));
+  if (!perms.length || perms.some(p => !p.depot_id)) return null;
+  return [...new Set(perms.map(p => p.depot_id))];
 };
 
 // Frequence de saisie par type de depot (menus Stocks depots int. et ext.)
@@ -32,13 +35,13 @@ const frequencesStocks = async () => ({
 
 const getSaisieData = async (user, droits) => {
   const rapport = await getOrCreateRapportSemaine(user.id);
-  const depotId = depotRestreint(user);
+  const depotIds = depotsRestreints(user);
   const date = today();
   const frequences = await frequencesStocks();
   const typeDepot = {}; (await Depot.findAll({ attributes: ['id', 'type'] })).forEach(d => { typeDepot[d.id] = d.type; });
   // Quotidien : stocks du jour uniquement ; hebdomadaire / permanent : derniere saisie de la semaine
   const autonomie = await getAutonomie(rapport, {
-    dateStock: date, jourExact: (id) => frequences[typeDepot[id]] === 'QUOTIDIEN', depotIds: depotId ? [depotId] : null,
+    dateStock: date, jourExact: (id) => frequences[typeDepot[id]] === 'QUOTIDIEN', depotIds,
   });
   return {
     rapport: {
@@ -47,7 +50,8 @@ const getSaisieData = async (user, droits) => {
     },
     date_saisie: date,
     frequences,
-    droits,
+    // depots : depots ou la saisie est permise (null = tous)
+    droits: { ...droits, depots: droits.stocks ? depotsRestreints(user, true) : null },
     ...autonomie,
   };
 };
@@ -63,7 +67,7 @@ const saveSaisie = async (rapportId, lignes, user, droits) => {
   if (rapport.statut === 'PUBLIE') throw { status: 400, message: 'Ce rapport est déjà publié et ne peut plus être modifié.' };
   if (!droits.stocks && !droits.actions) throw { status: 403, message: 'Accès refusé.' };
 
-  const depotId = depotRestreint(user);
+  const ecriture = depotsRestreints(user, true);
   const depots = await Depot.findAll({ where: { del: 0 } });
   const typeDepot = {}; depots.forEach(d => { typeDepot[d.id] = d.type; });
   const date = today();
@@ -71,12 +75,13 @@ const saveSaisie = async (rapportId, lignes, user, droits) => {
 
   for (const l of lignes) {
     if (!typeDepot[l.depot_id]) throw { status: 400, message: 'Dépôt inconnu.' };
-    if (depotId && l.depot_id !== depotId) continue;   // hors du perimetre de l'utilisateur : ignore
+    const quantitesPermises = !ecriture || ecriture.includes(l.depot_id);
 
     // ── Quantites du jour
     // Champs laisses vides : rien n'est enregistre (la derniere valeur saisie reste valable)
     const renseigne = (v) => v !== undefined && v !== null && v !== '';
-    if (droits.stocks && (renseigne(l.stock_bacs) || renseigne(l.stock_embranchement))) {
+    // Hors du perimetre d'ecriture : les quantites sont ignorees (l'action DSTA n'est pas limitee a un depot)
+    if (droits.stocks && quantitesPermises && (renseigne(l.stock_bacs) || renseigne(l.stock_embranchement))) {
       const bacs = Number(l.stock_bacs) || 0;
       // Le stock en embranchement ne concerne que les depots interieurs
       const embr = typeDepot[l.depot_id] === 'INTERIEUR' ? (Number(l.stock_embranchement) || 0) : 0;

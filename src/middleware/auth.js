@@ -119,6 +119,8 @@ const authenticate = async (req, res, next) => {
       }
     }
 
+    // Interim en cours : droits du titulaire absent ajoutes a ceux du compte
+    await require('../services/interim.service').completerUtilisateur(user);
     req.user = user;
     next();
   } catch {
@@ -126,11 +128,19 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+// Droit correspondant : le compte d'abord, puis un interim (son titulaire est alors note pour le journal)
+const droitVia = (req, test) => {
+  const perms = req.user.permissions ?? [];
+  if (perms.some(p => !p.interim_de && test(p))) return true;
+  const recu = perms.find(p => p.interim_de && test(p));
+  if (recu) req.interimDe = recu.interim_de;
+  return !!recu;
+};
+
 const authorize = (module, requiredAction) => (req, res, next) => {
   if (req.user.is_admin) return next();
 
-  const perms = req.user.permissions ?? [];
-  const allowed = perms.some((p) => {
+  const allowed = droitVia(req, (p) => {
     if (p.module !== module) return false;
     if (requiredAction === 'READ') return p.action === 'READ' || p.action === 'WRITE';
     return p.action === 'WRITE';
@@ -144,9 +154,8 @@ const authorize = (module, requiredAction) => (req, res, next) => {
 
 const authorizeAny = (...moduleActions) => (req, res, next) => {
   if (req.user.is_admin) return next();
-  const perms = req.user.permissions ?? [];
   const allowed = moduleActions.some(([module, action]) =>
-    perms.some((p) => {
+    droitVia(req, (p) => {
       if (p.module !== module) return false;
       if (action === 'READ') return p.action === 'READ' || p.action === 'WRITE';
       return p.action === 'WRITE';

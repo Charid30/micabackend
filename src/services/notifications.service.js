@@ -98,11 +98,11 @@ const envoyer = async (utilisateurIds, payload) => {
 };
 
 // Utilisateurs actifs avec leurs droits
-const utilisateursActifs = () => Utilisateur.findAll({
+const utilisateursActifs = async () => require('./interim.service').completerUtilisateurs(await Utilisateur.findAll({
   where: { del: 0, suspendu_le: null },
   attributes: ['id', 'is_admin'],
   include: [{ model: Permission, as: 'permissions', where: { del: 0 }, required: false }],
-});
+}));
 
 const aDroit = (u, module, action, depotId = null) => u.is_admin || (u.permissions || []).some(p =>
   p.module === module && (action === 'READ' ? ['READ', 'WRITE'].includes(p.action) : p.action === 'WRITE')

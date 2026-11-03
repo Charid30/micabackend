@@ -32,6 +32,15 @@ router.post('/sauvegardes', async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
+// ── Interims : droits d'un agent absent confies a un autre compte
+const interims = require('../services/interim.service');
+const repondre = (action) => async (req, res) => { try { res.json(await action(req)); } catch (e) { sendError(res, e, 400); } };
+router.get('/interims', repondre(() => interims.lister()));
+router.get('/interims/titulaire/:id/droits', repondre(req => interims.droitsDuTitulaire(req.params.id)));
+router.post('/interims', repondre(req => interims.creer(req.body, req.user.id)));
+router.put('/interims/:id', repondre(req => interims.modifier(req.params.id, req.body, req.user.id)));
+router.post('/interims/:id/arreter', repondre(req => interims.arreter(req.params.id, req.user.id)));
+
 // ── Journal d'audit
 router.get('/journal', async (req, res) => {
   try { res.json(await journal.rechercher(req.query)); } catch (e) { sendError(res, e); }

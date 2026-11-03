@@ -64,9 +64,10 @@ const journaliser = (req, res, next) => {
   if (IGNOREES.includes(chemin)) return next();
   res.on('finish', async () => {
     if (!req.user) return;                         // requete refusee avant authentification
-    const description = await decrire(req.method, chemin, req.body).catch(() => null);
     const segments = chemin.replace(/^\/api\//, '').split('/');
     const module = MODULES[segments[0]] || segments[0];
+    const base = await decrire(req.method, chemin, req.body).catch(() => null);
+    const description = req.interimDe ? `${base || `${libelleAction(req.method, chemin)} – ${module}`} (intérim de ${req.interimDe})` : base;
     const id = segments.find(s => /^\d+$/.test(s));
     let details = null;
     try { details = req.body && Object.keys(req.body).length ? JSON.stringify(resumer(req.body)).slice(0, 2000) : null; } catch { details = null; }

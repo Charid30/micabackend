@@ -25,10 +25,12 @@ const droitsDe = (user) => {
   const perms = user.permissions ?? [];
   const peut = (module, action) => user.is_admin || perms.some(p => p.module === module &&
     (action === 'READ' ? ['READ', 'WRITE'].includes(p.action) : p.action === 'WRITE'));
-  const depotImpompable = user.is_admin ? null
-    : (perms.find(p => p.module === 'impompable' && p.action === 'WRITE' && p.depot_id)?.depot_id || null);
+  // Depots dont l'impompable peut etre modifie (null = tous) ; un interim peut en ajouter un
+  const ecriture = perms.filter(p => p.module === 'impompable' && p.action === 'WRITE');
+  const depotsImpompable = user.is_admin || !ecriture.length || ecriture.some(p => !p.depot_id) ? null
+    : [...new Set(ecriture.map(p => p.depot_id))];
   return {
-    depots: peut('impompable', 'WRITE'), depot_restreint: depotImpompable,
+    depots: peut('impompable', 'WRITE'), depots_restreints: depotsImpompable,
     exterieur: peut('referentiel-stocks', 'WRITE'),
   };
 };
@@ -115,7 +117,7 @@ const saveDepots = async (user, lignes, dateEffet) => {
       exclu_total: cur ? cur.exclu_total : 0,
     };
     // Impompable et consommation : depots interieurs, droit "impompable" (eventuellement limite a un depot)
-    if (type === 'INTERIEUR' && d.depots && (!d.depot_restreint || d.depot_restreint === l.depot_id)) {
+    if (type === 'INTERIEUR' && d.depots && (!d.depots_restreints || d.depots_restreints.includes(l.depot_id))) {
       if (l.impompable !== undefined && l.impompable !== null) valeurs.impompable = num(l.impompable);
       if (l.conso_moyenne !== undefined && l.conso_moyenne !== null) valeurs.conso_moyenne = num(l.conso_moyenne);
     }
