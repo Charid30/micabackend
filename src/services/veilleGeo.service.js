@@ -66,4 +66,4 @@ const saveSaisie = async (rapportId, zonesData, userId) => {
   return { message: 'Veille géopolitique enregistrée avec succès.' };
 };
 
-module.exports = { getSaisieData, saveSaisie };
+module.exports = { getSaisieData, saveSaisie, ZONES_DEF };

@@ -19,10 +19,10 @@
 // Meme contenu pour l'apercu, le PDF et l'export Excel. Les calculs d'autonomie et de tresorerie viennent
 // de autonomie.service et tresorerie.service.
 const { Op } = require('sequelize');
-const { RapportHebdo, Produit, VenteMarketeur } = require('../models');
+const { RapportHebdo, Produit, VenteMarketeur, VeilleMarche, VeilleGeopolitique } = require('../models');
 const { getAutonomie } = require('./autonomie.service');
 const { getTresorerie } = require('./tresorerie.service');
-const { derniereValeurParRapport } = require('./frequence.service');
+const { derniereValeurParRapport, derniereValeur } = require('./frequence.service');
 
 // Ordre et libelles du document REPORTING
 const ORDRE = ['SUPER91', 'GASOIL', 'DDO', 'PETROLE', 'GAZ', 'FUEL_OIL', 'JET_A1'];
@@ -112,6 +112,40 @@ function dettes(treso) {
   };
 }
 
+// Veilles de la semaine (derniere saisie) : indicateurs de prix renseignes (semaine N differente de zero)
+// et zones geopolitiques renseignees ; une hausse de prix est defavorable
+async function veilles(rapport) {
+  const { INDICATEURS_DEF } = require('./veilleMarche.service');
+  const { ZONES_DEF } = require('./veilleGeo.service');
+  const [marche, geo] = await Promise.all([
+    VeilleMarche.findAll({ where: { rapport_id: rapport.id, del: 0 } }),
+    VeilleGeopolitique.findAll({ where: { rapport_id: rapport.id, del: 0 } }),
+  ]);
+  const prix = new Map(derniereValeur(marche, r => r.produit).map(r => [r.produit, r]));
+  const prixDe = (v) => (v === null || v === undefined ? null : parseFloat(v));
+  const indicateurs = INDICATEURS_DEF.map((def) => {
+    const r = prix.get(def.code);
+    const n = prixDe(r?.prix_semaine_n), n1 = prixDe(r?.prix_semaine_n1);
+    const variation = n !== null && n1 ? (n - n1) / n1 : null;
+    return {
+      libelle: def.libelle, unite: def.unite, source: def.source, prix_n: n, prix_n1: n1 || null, variation,
+      tendance: variation === null ? null : variation > 0 ? 'hausse' : variation < 0 ? 'baisse' : 'stable',
+      favorable: variation === null || variation === 0 ? null : variation < 0,
+    };
+  }).filter(i => i.prix_n !== null && i.prix_n !== 0);
+
+  const zones = new Map(derniereValeur(geo, r => r.zone).map(r => [r.zone, r]));
+  const ordre = [...ZONES_DEF.map(z => z.zone), ...[...zones.keys()].filter(z => !ZONES_DEF.some(d => d.zone === z))];
+  const geopolitique = ordre.map((zone) => {
+    const r = zones.get(zone);
+    return {
+      zone, source: ZONES_DEF.find(d => d.zone === zone)?.source || null,
+      evenement: String(r?.evenement || '').trim(), impact: String(r?.impact || '').trim(), niveau_risque: r?.niveau_risque || null,
+    };
+  }).filter(z => z.evenement || z.impact || z.niveau_risque);
+  return { indicateurs, geopolitique };
+}
+
 const getReporting = async (rapport) => {
   const prec = await rapportPrecedent(rapport);
   const [auto, autoPrec, treso, produitsRaw, reco] = await Promise.all([
@@ -125,7 +159,7 @@ const getReporting = async (rapport) => {
   const codes = trier(produitsRaw.map(p => p.code).filter(c => ORDRE.includes(c)));
   const produits = codes.map(c => produitsRaw.find(p => p.code === c));
 
-  const v = await ventes(rapport, prec, produits);
+  const [v, veille] = await Promise.all([ventes(rapport, prec, produits), veilles(rapport)]);
 
   return {
     date: rapport.date_fin,
@@ -143,6 +177,8 @@ const getReporting = async (rapport) => {
     dettes: dettes(treso),
     difficultes: lignesTexte(reco?.risques_majeurs),
     recommandations: lignesTexte(reco?.recommandations),
+    veille_marche: veille.indicateurs,
+    veille_geopolitique: veille.geopolitique,
   };
 };
 

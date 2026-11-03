@@ -77,4 +77,4 @@ const saveSaisie = async (rapportId, indicateurs, userId) => {
   return { message: 'Veille marché enregistrée avec succès.' };
 };
 
-module.exports = { getSaisieData, saveSaisie };
+module.exports = { getSaisieData, saveSaisie, INDICATEURS_DEF };
