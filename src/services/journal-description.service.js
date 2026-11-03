@@ -110,7 +110,7 @@ const decrireReferentiel = async (methode, cle, id, corps) => {
   return `${methode === 'DELETE' ? 'Suppression' : 'Modification'} ${e.le} ${nom}`;
 };
 
-const RDC_PAYS = { ghana: 'Ghana', benin: 'Bénin', 'cote-ivoire': 'Côte d\'Ivoire' };
+const RDC_PAYS = { ghana: 'Ghana', benin: 'Bénin', 'cote-ivoire': 'Côte d\'Ivoire', togo: 'Togo' };
 const RDC_OBJETS = { chargements: 'du chargement', receptions: 'de la réception' };
 
 // /rdc/<pays>/etat, /rdc/<pays>/chargements[/id], /rdc/<pays>/receptions[/id], /rdc/<pays>/destinations[/id]

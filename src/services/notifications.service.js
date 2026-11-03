@@ -147,6 +147,7 @@ const ECRANS = {
   'rdc-ghana': { droit: 'rdc-ghana', url: '/rdc/ghana' },
   'rdc-benin': { droit: 'rdc-benin', url: '/rdc/benin' },
   'rdc-cote-ivoire': { droit: 'rdc-cote-ivoire', url: '/rdc/cote-ivoire' },
+  'rdc-togo': { droit: 'rdc-togo', url: '/rdc/togo' },
 };
 
 // Liste de ce qui manque aujourd'hui : [{ libelle, droit, depot_id, url }]

@@ -15,14 +15,15 @@
 //  - CALCUL : temperature, densite et volume ambiant ; MICA calcule le reste et le conserve sur la ligne
 //    (changer de formule ne modifie pas les jours passes) ;
 //  - GPL : quantite directe en kg (temperature et densite facultatives) ;
-//  - QUANTITES (APD/BOST) : quantite a 20 °C et quantite observee, sans tonnage.
+//  - QUANTITES (APD/BOST) : quantite a 20 °C et quantite observee, sans tonnage ;
+//  - VOLUMES (STSL au Togo) : volume ambiant et volume a 15 °C du depot, sans tonnage.
 const { Op, UniqueConstraintError } = require('sequelize');
 const {
   sequelize, RdcDepot, RdcDestination, RdcStock, RdcAttente, RdcBesoin, RdcChargement, RdcReception,
 } = require('../models');
 const { aujourdhui } = require('./frequence.service');
 
-const PAYS = { ghana: 'GHANA', benin: 'BENIN', 'cote-ivoire': 'CI' };
+const PAYS = { ghana: 'GHANA', benin: 'BENIN', 'cote-ivoire': 'CI', togo: 'TOGO' };
 const PRODUITS = [
   { code: 'SUPER', libelle: 'Super' }, { code: 'PETROLE', libelle: 'Pétrole' }, { code: 'GASOIL', libelle: 'Gasoil' },
   { code: 'DDO', libelle: 'DDO' }, { code: 'FUEL', libelle: 'Fuel 180' }, { code: 'JET', libelle: 'Jet A1' },
@@ -38,8 +39,11 @@ const FIN_COLONNES = [
 ];
 const COLONNES = {
   GHANA: [BINGO, BOBO, ...FIN_COLONNES], BENIN: [BINGO, PENI, ...FIN_COLONNES], CI: [BINGO, BOBO, PENI, ...FIN_COLONNES],
+  TOGO: [BINGO, BOBO, PENI, ...FIN_COLONNES],
 };
-const UNITES = ['TM', 'M3'];
+const UNITES = ['TM', 'M3', 'M315'];     // M3 : m³ ambiant ; M315 : m³ a 15 °C
+// Etat du pays : tableau des chargements en tonnes, ou en nombre de camions (comme les etats du Benin et du Togo)
+const CHARGEMENTS_EN_CAMIONS = ['BENIN', 'TOGO'];
 const STATUTS = ['PREVU', 'EN_COURS', 'LIVRE'];
 const VOLUME_MAX = 1000000000;
 const BESOIN_MAX = 100000;
@@ -129,7 +133,7 @@ const calculer = ({ temperature, densite, volume_ambiant: litres, vcf: vcfDepot 
 const valeursCamion = (c, depot, produit) => {
   const base = {
     date_chargement: verifierDate(c.date_chargement), depot_id: depot.id, produit,
-    bon: texte(c.bon, 40), commande: texte(c.commande, 40), tracteur: texte(c.tracteur, 20),
+    bon: texte(c.bon, 40), commande: texte(c.commande, 40), bl: texte(c.bl, 40), tracteur: texte(c.tracteur, 20),
     remorque: texte(c.remorque, 20), destination: texte(c.destination, 80),
     temperature: null, densite: null, volume_ambiant: null, quantite_20: null, quantite_kg: null,
     vcf_depot: null, vcf: null, volume_15: null, tonnes_vide: null, tonnes_air: null,
@@ -140,6 +144,14 @@ const valeursCamion = (c, depot, produit) => {
 
   const temperature = nombre(c.temperature, 'Température', { min: -20, max: 80 });
   const densite = nombre(c.densite, 'Densité', { min: 400, max: 1100 });
+  if (depot.mode_saisie === 'VOLUMES' && produit !== 'BUTANE') {
+    const litres15 = requis(nombre(c.volume_15_l, 'Volume à 15 °C', { entier: true, max: ENTIER_MAX }), 'Volume à 15 °C');
+    return {
+      ...base,
+      volume_ambiant: requis(nombre(c.volume_ambiant, 'Volume ambiant', { entier: true, max: ENTIER_MAX }), 'Volume ambiant'),
+      volume_15: litres15 / 1000,
+    };
+  }
   if (depot.mode_saisie === 'QUANTITES') {
     return {
       ...base,
@@ -184,17 +196,19 @@ const getEtat = async (slug, date = aujourdhui()) => {
     RdcBesoin.findAll({ where: { pays, date_saisie: date, del: 0 } }),
     RdcBesoin.findAll({ where: { pays, date_saisie: { [Op.lt]: date }, del: 0 }, order: [['date_saisie', 'DESC']], limit: 500 }),
     RdcChargement.findAll({ where: { date_chargement: hier, depot_id: depotIds, del: 0 }, attributes: ['depot_id', 'produit', 'destination', 'tonnes_air'] }),
-    RdcReception.findAll({ where: { depot_id: depotIds, date_reception: { [Op.between]: [debutReceptions, date] }, del: 0 }, order: [['date_reception', 'DESC'], ['id', 'DESC']] }),
+    RdcReception.findAll({ where: { pays, date_reception: { [Op.between]: [debutReceptions, date] }, del: 0 }, order: [['date_reception', 'DESC'], ['id', 'DESC']] }),
     colonnesDes(pays),
   ]);
 
   const charges = {};
   const tonnes = {};
+  const camions = {};
   let sansTonnage = 0;
   for (const c of chargements) {
     charges[`${c.depot_id}_${c.produit}`] = (charges[`${c.depot_id}_${c.produit}`] || 0) + 1;
-    if (c.tonnes_air === null) { sansTonnage += 1; continue; }
     const cle = `${c.produit}_${colonneDe(c.destination)}`;
+    camions[cle] = (camions[cle] || 0) + 1;
+    if (c.tonnes_air === null) { sansTonnage += 1; continue; }
     tonnes[cle] = (tonnes[cle] || 0) + Number(c.tonnes_air);
   }
 
@@ -204,7 +218,8 @@ const getEtat = async (slug, date = aujourdhui()) => {
     produits, colonnes, depots: depots.map(d => ({ id: d.id, libelle: d.libelle, mode_saisie: d.mode_saisie })),
     stocks: stocks.map(s => ({ depot_id: s.depot_id, produit: s.produit, volume: Number(s.volume) })),
     attentes: attentes.map(a => ({ depot_id: a.depot_id, produit: a.produit, camions: a.camions })),
-    charges, tonnes, sans_tonnage: sansTonnage,
+    charges, tonnes, camions, sans_tonnage: sansTonnage,
+    chargements_en: CHARGEMENTS_EN_CAMIONS.includes(pays) ? 'CAMIONS' : 'TONNES',
     besoins: PRODUITS.map((p) => {
       const b = besoins.find(x => x.produit === p.code) || reprise(p.code);
       return { produit: p.code, libelle: p.libelle, quantite: b?.quantite ?? null, repartition: b?.repartition ?? null };
@@ -261,7 +276,7 @@ const saveEtat = async (slug, { date, stocks, attentes, besoins }, userId) => {
 const ligneChargement = (c, depots) => ({
   id: c.id, date_chargement: c.date_chargement, depot_id: c.depot_id,
   depot: depots.find(d => d.id === c.depot_id)?.libelle || '', produit: c.produit,
-  bon: c.bon, commande: c.commande, tracteur: c.tracteur, remorque: c.remorque, destination: c.destination,
+  bon: c.bon, commande: c.commande, bl: c.bl, tracteur: c.tracteur, remorque: c.remorque, destination: c.destination,
   temperature: c.temperature === null ? null : Number(c.temperature), densite: c.densite === null ? null : Number(c.densite),
   volume_ambiant: c.volume_ambiant, quantite_20: c.quantite_20, quantite_kg: c.quantite_kg,
   vcf_depot: c.vcf_depot === null ? null : Number(c.vcf_depot),
@@ -355,8 +370,9 @@ const supprimerChargement = async (slug, id, userId) => {
 // ── Receptions
 const ligneReception = (r, depots) => ({
   id: r.id, date_reception: r.date_reception, date_fin: r.date_fin, numero_eme: r.numero_eme, accostage: r.accostage,
-  fournisseur: r.fournisseur, depot_id: r.depot_id,
-  depot: depots.find(d => d.id === r.depot_id)?.libelle || '', produit: r.produit,
+  fournisseur: r.fournisseur, depot_id: r.depot_id, lieu_livraison: r.lieu_livraison, type_operation: r.type_operation,
+  // Lieu affiche : le depot suivi, ou le lieu saisi (ex. ZENER au Togo)
+  depot: depots.find(d => d.id === r.depot_id)?.libelle || r.lieu_livraison || '', produit: r.produit,
   quantite: Number(r.quantite), unite: r.unite, statut: r.statut,
 });
 
@@ -364,7 +380,7 @@ const getReceptions = async (slug) => {
   const pays = paysDe(slug);
   const depots = await depotsDu(pays);
   const rows = await RdcReception.findAll({
-    where: { depot_id: depots.map(d => d.id), del: 0 }, order: [['date_reception', 'DESC'], ['id', 'DESC']], limit: 300,
+    where: { pays, del: 0 }, order: [['date_reception', 'DESC'], ['id', 'DESC']], limit: 300,
   });
   return {
     produits: PRODUITS, unites: UNITES, statuts: STATUTS,
@@ -373,10 +389,13 @@ const getReceptions = async (slug) => {
   };
 };
 
+// Lieu de livraison : un depot suivi, ou un autre lieu saisi ; fournisseur ou type d'operation obligatoire
 const valeursReception = async (pays, corps) => {
-  const depot = await depotDu(pays, corps?.depot_id);
+  const lieu = texte(corps?.lieu_livraison, 80);
+  const depot = corps?.depot_id || !lieu ? await depotDu(pays, corps?.depot_id) : null;
   const fournisseur = texte(corps?.fournisseur, 120);
-  if (!fournisseur) throw erreur('Le fournisseur est obligatoire.');
+  const typeOperation = texte(corps?.type_operation, 40);
+  if (!fournisseur && !typeOperation) throw erreur('Le fournisseur ou le type d\'opération est obligatoire.');
   if (!UNITES.includes(corps?.unite)) throw erreur('Unité inconnue.');
   if (!STATUTS.includes(corps?.statut)) throw erreur('Statut inconnu.');
   const dateReception = verifierDate(corps?.date_reception);
@@ -384,7 +403,7 @@ const valeursReception = async (pays, corps) => {
   if (dateFin && dateFin < dateReception) throw erreur('La fin de la période précède son début.');
   return {
     date_reception: dateReception, date_fin: dateFin, numero_eme: texte(corps?.numero_eme, 40), accostage: texte(corps?.accostage, 80),
-    fournisseur, depot_id: depot.id,
+    pays, fournisseur, type_operation: typeOperation, depot_id: depot?.id || null, lieu_livraison: depot ? null : lieu,
     produit: produitValide(corps?.produit), unite: corps.unite, statut: corps.statut,
     quantite: requis(nombre(corps?.quantite, 'Quantité'), 'Quantité'),
   };
@@ -396,8 +415,7 @@ const ajouterReception = async (slug, corps, userId) => {
 };
 
 const receptionDu = async (pays, id) => {
-  const depots = await depotsDu(pays);
-  const r = await RdcReception.findOne({ where: { id: Number(id) || 0, depot_id: depots.map(d => d.id), del: 0 } });
+  const r = await RdcReception.findOne({ where: { id: Number(id) || 0, pays, del: 0 } });
   if (!r) throw erreur('Réception introuvable.', 404);
   return r;
 };
