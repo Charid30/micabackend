@@ -8,3 +8,6 @@ storage/sauvegardes/
 
 # Cles VAPID des notifications push (secretes, jamais servies par l API)
 secrets/
+
+# Chrome des PDF (Puppeteer)
+.cache/

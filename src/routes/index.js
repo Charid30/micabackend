@@ -47,5 +47,7 @@ router.use('/notifications', authenticate, require('./notifications.routes'));
 // Rafraichissement automatique : flux des signaux d'enregistrement
 router.get('/evenements', authenticate, require('../services/temps-reel.service').connecter);
 router.use('/administration', authenticate, require('./administration.routes'));
+// Impression PDF par Chrome (rapport hebdomadaire, centrales, RDC)
+router.use('/pdf', authenticate, require('./pdf.routes'));
 
 module.exports = router;

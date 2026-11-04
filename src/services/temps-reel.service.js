@@ -11,7 +11,7 @@
 // Rafraichissement automatique : apres chaque enregistrement reussi, le serveur signale aux navigateurs
 // connectes quel ecran a change (flux Server-Sent Events). Le signal ne contient aucune donnee metier :
 // le navigateur recharge ensuite par les routes habituelles, avec les droits de son utilisateur.
-const SUJETS_IGNORES = ['auth', 'profil', 'notifications', 'evenements'];
+const SUJETS_IGNORES = ['auth', 'profil', 'notifications', 'evenements', 'pdf'];   // pdf : impression, rien n'est modifie
 const SUJETS_ADMIN = ['utilisateurs', 'agents', 'administration', 'intrusions', 'parametres'];
 const BATTEMENT_MS = 25000;                // garde la connexion ouverte a travers Apache
 const DUREE_MAX_MS = 30 * 60 * 1000;       // reconnexion reguliere : la session est alors reverifiee

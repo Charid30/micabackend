@@ -28,8 +28,9 @@ const MODULES = {
   marketeurs: 'Marketeurs', profil: 'Mon profil', auth: 'Authentification', administration: 'Administration',
 };
 // Routes non journalisees ici : connexion / deconnexion (historique des connexions dedie) ;
-// abonnement aux notifications : rattachement automatique du navigateur a chaque visite, sans interet
-const IGNOREES = ['/api/auth/login', '/api/auth/logout', '/api/auth/login/2fa', '/api/notifications/abonnement'];
+// abonnement aux notifications : rattachement automatique du navigateur a chaque visite, sans interet ;
+// impression PDF : simple lecture, rien n'est modifie
+const IGNOREES = ['/api/auth/login', '/api/auth/logout', '/api/auth/login/2fa', '/api/notifications/abonnement', '/api/pdf'];
 const ROUTES_MASQUEES = IGNOREES.flatMap(r => ['POST', 'DELETE'].map(m => `${m} ${r}`));
 const SECRET = /pass|mot_de_passe|secret|token|jeton|code/i;
 
