@@ -8,7 +8,7 @@
  *  Projet : MICA – SONABHY
  *  Merci
  * ================================================================== */
-const bcrypt = require('bcryptjs');
+const { hacher } = require('../utils/hachage');
 const { Utilisateur, Agent, Direction, Entreprise, Permission } = require('../models');
 const { validatePasswordStrength } = require('./auth.service');
 
@@ -77,7 +77,7 @@ const create = async (data, userId) => {
     throw { status: 400, message: 'Agent, username, email et mot de passe sont requis.' };
   }
   validatePasswordStrength(password);
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await hacher(password);
   const profilData = PROFILS[profil] || PROFILS.LECTEUR;
 
   const user = await Utilisateur.create({
@@ -118,7 +118,7 @@ const resetPassword = async (id, newPassword, userId, mustChangePassword = false
   const u = await Utilisateur.findOne({ where: { id, del: 0 } });
   if (!u) throw { status: 404, message: 'Utilisateur introuvable.' };
   validatePasswordStrength(newPassword);
-  const hash = await bcrypt.hash(newPassword, 10);
+  const hash = await hacher(newPassword);
   const now = new Date();
   // password_changed_at invalide les sessions ouvertes avec l'ancien mot de passe ; on lève aussi un éventuel verrouillage
   await u.update({

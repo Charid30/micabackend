@@ -16,6 +16,7 @@
 //    avec un delai de grace : un bandeau previent jusqu'a l'echeance, la configuration est ensuite exigee
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { hacher } = require('../utils/hachage');
 const QRCode = require('qrcode');
 const { Utilisateur, Parametre } = require('../models');
 
@@ -101,7 +102,7 @@ const genererCodesSecours = async () => {
     const b = base32Encoder(crypto.randomBytes(5)).slice(0, 8);
     return `${b.slice(0, 4)}-${b.slice(4)}`;
   });
-  const empreintes = await Promise.all(codes.map(c => bcrypt.hash(c, 10)));
+  const empreintes = await Promise.all(codes.map(c => hacher(c)));
   return { codes, empreintes: JSON.stringify(empreintes) };
 };
 const normaliserCodeSecours = (code) => {

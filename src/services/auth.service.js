@@ -9,6 +9,8 @@
  *  Merci
  * ================================================================== */
 const bcrypt = require('bcryptjs');
+const { hacher, hacherSync } = require('../utils/hachage');
+const sessions = require('./session.service');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const jwtConfig = require('../config/jwt');
@@ -30,8 +32,9 @@ const _userIncludes = [
 const JETON_2FA_DUREE = '5m';
 const issueToken2fa = (user) => jwt.sign({ id: user.id, etape: '2fa' }, jwtConfig.secret, { expiresIn: JETON_2FA_DUREE, algorithm: 'HS256' });
 
-const issueToken = (user) => jwt.sign(
-  { id: user.id, username: user.username },
+// Jeton de session : porte l'identifiant de la session ouverte cote serveur (revocable)
+const issueToken = async (user, ip = null) => jwt.sign(
+  { id: user.id, username: user.username, sid: await sessions.ouvrir(user.id, ip) },
   jwtConfig.secret,
   { expiresIn: jwtConfig.expiresIn, algorithm: 'HS256' }
 );
@@ -41,7 +44,7 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 const INVALID_CREDENTIALS = { status: 401, message: 'Identifiant ou mot de passe incorrect.' };
 // Hash factice : le temps de réponse est le même que le compte existe ou non (pas d'énumération des comptes)
-const DUMMY_HASH = bcrypt.hashSync('compte-inexistant', 10);
+const DUMMY_HASH = hacherSync('compte-inexistant');
 
 // Profil renvoye a l'application : le changement de mot de passe est exige a la premiere connexion
 // (must_change_password) ou a l'expiration du mot de passe (politique MOT_DE_PASSE_DUREE_JOURS)
@@ -122,7 +125,7 @@ const ouvrirSession = async (user, ctx, motif) => {
   await journaliserConnexion(user.id, true, motif, ctx);
   await require('./interim.service').completerUtilisateur(user, { depot: true });
   const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
-  return { token: issueToken(user), utilisateur: profilSession(user, await chargerPolitique(), ex) };
+  return { token: await issueToken(user, ctx.ip), utilisateur: { ...profilSession(user, await chargerPolitique(), ex), session_inactivite_minutes: await sessions.minutesInactivite() } };
 };
 
 // Etape 2 : code de l'application d'authentification ou code de secours
@@ -157,7 +160,7 @@ const getMe = async (userId) => {
   if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
   await require('./interim.service').completerUtilisateur(user, { depot: true });
   const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
-  return profilSession(user, await chargerPolitique(), ex);
+  return { ...profilSession(user, await chargerPolitique(), ex), session_inactivite_minutes: await sessions.minutesInactivite() };
 };
 
 // Le nouveau mot de passe doit differer de l'actuel
@@ -190,9 +193,10 @@ const changePassword = async (userId, ancienMotDePasse, nouveauMotDePasse) => {
   if (!valid) throw { status: 400, message: 'Ancien mot de passe incorrect.' };
   await verifierDifferent(nouveauMotDePasse, user.password);
 
-  const hash = await bcrypt.hash(nouveauMotDePasse, 10);
+  const hash = await hacher(nouveauMotDePasse);
   const now = new Date();
   await user.update({ password: hash, password_changed_at: now, updated_by: userId, updated_at: now });
+  await sessions.revoquerToutes(userId);
 };
 
 // Changement sans l'ancien mot de passe : reserve a la premiere connexion et au mot de passe expire.
@@ -207,9 +211,10 @@ const forcedChangePassword = async (userId, newPassword) => {
     throw { status: 403, message: 'Utilisez « Changer mon mot de passe » depuis votre profil (ancien mot de passe requis).' };
   }
   await verifierDifferent(newPassword, user.password);
-  const hash = await bcrypt.hash(newPassword, 10);
+  const hash = await hacher(newPassword);
   const now = new Date();
   await user.update({ password: hash, must_change_password: 0, password_changed_at: now, updated_by: userId, updated_at: now });
+  await sessions.revoquerToutes(userId);
 };
 
 module.exports = { login, loginDoubleAuth, getMe, changePassword, forcedChangePassword, validatePasswordStrength, issueToken };

@@ -89,6 +89,15 @@ const authenticate = async (req, res, next) => {
       ],
     });
     if (!user) return res.status(401).json({ message: 'Utilisateur introuvable.' });
+
+    // Session revoquee (deconnexion, nouveau mot de passe) ou fermee apres inactivite
+    const session = await require('../services/session.service').verifier(decoded.sid, user.id, req.originalUrl.split('?')[0]);
+    if (!session.ok) {
+      return res.status(401).json(session.code === 'SESSION_INACTIVE'
+        ? { code: 'SESSION_INACTIVE', message: 'Session fermée après une période d\'inactivité. Reconnectez-vous.' }
+        : { code: 'SESSION_FERMEE', message: 'Session expirée, veuillez vous reconnecter.' });
+    }
+    req.sid = decoded.sid;
     if (user.suspendu_le) return res.status(401).json({ code: 'COMPTE_SUSPENDU', message: 'Compte suspendu pour raison de sécurité. Contactez l\'administrateur.' });
 
     // Invalidation token après changement de mot de passe
@@ -165,12 +174,16 @@ const authorizeAny = (...moduleActions) => (req, res, next) => {
   next();
 };
 
+// Lecture soumise a READ, ecriture a WRITE
+const accesModule = (module) => (req, res, next) =>
+  authorize(module, SAFE_METHODS.includes(req.method) ? 'READ' : 'WRITE')(req, res, next);
+
 // Lecture libre (utilisateur connecté), écriture soumise à la permission WRITE du module
 const writeRequires = (module) => (req, res, next) =>
   SAFE_METHODS.includes(req.method) ? next() : authorize(module, 'WRITE')(req, res, next);
 
 module.exports = {
   readCookie,
-  authenticate, authorize, authorizeAny, writeRequires, requireAjaxHeader, getSessionUserId,
+  authenticate, authorize, authorizeAny, writeRequires, accesModule, requireAjaxHeader, getSessionUserId,
   COOKIE_NAME, cookieOptions,
 };

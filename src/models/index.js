@@ -442,6 +442,18 @@ const JournalAction = sequelize.define('JournalAction', {
   created_at:     { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 }, { tableName: 'journal_actions', timestamps: false });
 
+// ── SESSIONS : une par connexion, revoquee a la deconnexion ou apres inactivite
+const Session = sequelize.define('Session', {
+  id:                { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  sid:               { type: DataTypes.CHAR(32), allowNull: false },
+  utilisateur_id:    { type: DataTypes.INTEGER, allowNull: false },
+  ip:                { type: DataTypes.STRING(45), allowNull: true },
+  cree_le:           { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  derniere_activite: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  revoquee_le:       { type: DataTypes.DATE, allowNull: true },
+  motif_fin:         { type: DataTypes.STRING(20), allowNull: true },
+}, { tableName: 'sessions', timestamps: false });
+
 // ── CONNEXIONS (historique des connexions reussies et echouees de chaque compte)
 const ConnexionUtilisateur = sequelize.define('ConnexionUtilisateur', {
   id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -795,6 +807,7 @@ module.exports = {
   CentraleSaisie,
   CentraleParc,
   Interim,
+  Session,
   RdcDepot,
   RdcDestination,
   RdcStock,

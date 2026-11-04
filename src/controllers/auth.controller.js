@@ -13,6 +13,9 @@ const { contexteRequete } = require('../services/securite-compte.service');
 const { echecConnexion } = require('../services/intrusion.service');
 const { sendError } = require('../utils/http-error');
 const { COOKIE_NAME, cookieOptions, readCookie } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+const jwtConfig = require('../config/jwt');
+const { revoquer } = require('../services/session.service');
 const COOKIE_2FA = 'mica_2fa';
 
 const SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000; // aligné sur JWT_EXPIRES_IN (8h)
@@ -52,7 +55,12 @@ exports.loginDoubleAuth = async (req, res) => {
   }
 };
 
-exports.logout = (req, res) => {
+// La session est revoquee cote serveur : le jeton ne sert plus, meme copie
+exports.logout = async (req, res) => {
+  try {
+    const decoded = jwt.verify(readCookie(req, COOKIE_NAME) || '', jwtConfig.secret, { algorithms: ['HS256'] });
+    await revoquer(decoded.sid);
+  } catch { /* jeton absent ou invalide : rien a revoquer */ }
   res.clearCookie(COOKIE_NAME, cookieOptions());
   res.json({ message: 'Déconnecté.' });
 };
@@ -70,7 +78,7 @@ exports.forcedChangePassword = async (req, res) => {
   try {
     await authService.forcedChangePassword(req.user.id, nouveauMotDePasse);
     // Les anciens jetons sont invalidés : on délivre une nouvelle session
-    setSessionCookie(res, authService.issueToken(req.user));
+    setSessionCookie(res, await authService.issueToken(req.user, req.ip));
     res.json({ message: 'Mot de passe modifié avec succès.' });
   } catch (err) {
     sendError(res, err);
@@ -81,7 +89,7 @@ exports.changePassword = async (req, res) => {
   const { ancienMotDePasse, nouveauMotDePasse } = req.body;
   try {
     await authService.changePassword(req.user.id, ancienMotDePasse, nouveauMotDePasse);
-    setSessionCookie(res, authService.issueToken(req.user));
+    setSessionCookie(res, await authService.issueToken(req.user, req.ip));
     res.json({ message: 'Mot de passe modifié avec succès.' });
   } catch (err) {
     sendError(res, err);

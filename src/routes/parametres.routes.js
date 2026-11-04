@@ -11,13 +11,13 @@
 const express = require('express');
 const router = express.Router();
 const { Parametre, ParametreAlerte, Produit } = require('../models');
-const { authenticate, writeRequires } = require('../middleware/auth');
+const { authenticate, accesModule } = require('../middleware/auth');
 const { sendError } = require('../utils/http-error');
 const v = require('../middleware/validate');
 
 router.use(authenticate);
-// Lecture : tout utilisateur connecté ; modification : permission parametres:WRITE
-router.use(writeRequires('parametres'));
+// Lecture : permission parametres:READ ; modification : parametres:WRITE
+router.use(accesModule('parametres'));
 
 // ── Paramètres généraux (clé/valeur) ─────────────────────────
 router.get('/', async (req, res) => {
@@ -39,6 +39,9 @@ router.put('/:id', v.parametre, async (req, res) => {
       return res.status(400).json({ message: 'Fréquence de saisie : modifiable dans Paramètres > Fréquences de saisie.' });
     }
     const valeur = String(req.body.valeur ?? '').trim();
+    if (p.cle === 'SESSION_INACTIVITE_MINUTES' && !(/^\d+$/.test(valeur) && +valeur >= 5 && +valeur <= 480)) {
+      return res.status(400).json({ message: 'Inactivité : un nombre de minutes entre 5 et 480 est attendu.' });
+    }
     if (p.cle === 'NOTIF_SAISIE_HEURE' && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(valeur)) {
       return res.status(400).json({ message: 'Heure du rappel : format HH:MM attendu (ex. 09:35).' });
     }

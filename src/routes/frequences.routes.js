@@ -12,12 +12,12 @@
 // Lecture : tout utilisateur connecte (ecrans de saisie) ; modification : permission parametres:WRITE
 const express = require('express');
 const router = express.Router();
-const { authenticate, writeRequires } = require('../middleware/auth');
+const { authenticate, accesModule } = require('../middleware/auth');
 const { sendError } = require('../utils/http-error');
 const { getFrequences, saveFrequences } = require('../services/frequence.service');
 
 router.use(authenticate);
-router.use(writeRequires('parametres'));
+router.use(accesModule('parametres'));
 
 router.get('/', async (req, res) => {
   try { res.json(await getFrequences()); } catch (e) { sendError(res, e); }
