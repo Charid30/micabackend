@@ -174,6 +174,22 @@ const getHistorique = async () => {
   }));
 };
 
+// Fichier d'une sauvegarde reussie, pour le telechargement par un administrateur.
+// Le nom vient de la base et doit avoir la forme exacte d'une sauvegarde ; il n'est cherche
+// que dans le dossier des sauvegardes et son sous-dossier hebdo (aucun chemin fourni par le client).
+const cheminFichier = async (id) => {
+  const s = await Sauvegarde.findByPk(id);
+  if (!s || s.statut !== 'OK' || !/^mica_db_\d{4}-\d{2}-\d{2}_\d{6}\.sql\.gz$/.test(s.fichier || '')) {
+    throw { status: 404, message: 'Sauvegarde introuvable.' };
+  }
+  const cfg = config();
+  for (const dossier of [cfg.dossier, path.join(cfg.dossier, 'hebdo')]) {
+    const p = path.join(dossier, s.fichier);
+    if (fs.existsSync(p)) return p;
+  }
+  throw { status: 404, message: 'Ce fichier n\'est plus sur le serveur (durée de conservation dépassée).' };
+};
+
 let tache = null;
 const startSauvegardes = async () => {
   const cfg = config();
@@ -191,4 +207,4 @@ const startSauvegardes = async () => {
   }
 };
 
-module.exports = { lancerSauvegarde, getEtat, getHistorique, startSauvegardes };
+module.exports = { lancerSauvegarde, getEtat, getHistorique, startSauvegardes, cheminFichier };

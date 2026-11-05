@@ -32,6 +32,19 @@ router.post('/sauvegardes', async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
+// Telechargement d'une sauvegarde (copie hors du serveur). En POST pour etre inscrit au journal d'audit.
+router.post('/sauvegardes/:id/telecharger', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!(id > 0)) return res.status(400).json({ message: 'Identifiant invalide.' });
+    const chemin = await sauvegardes.cheminFichier(id);
+    res.set({ 'Content-Type': 'application/gzip', 'Cache-Control': 'no-store' });
+    res.download(chemin, require('path').basename(chemin), (err) => {
+      if (err && !res.headersSent) sendError(res, { status: 500, message: 'Téléchargement impossible.' });
+    });
+  } catch (e) { sendError(res, e, 404); }
+});
+
 // ── Interims : droits d'un agent absent confies a un autre compte
 const interims = require('../services/interim.service');
 const repondre = (action) => async (req, res) => { try { res.json(await action(req)); } catch (e) { sendError(res, e, 400); } };

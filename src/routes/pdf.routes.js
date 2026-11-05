@@ -21,13 +21,19 @@ const corpsHtml = express.text({ type: 'text/html', limit: '10mb' });
 // Nom de fichier : lettres, chiffres, tiret, point, souligné
 const nomFichier = (n) => (String(n || 'document').replace(/[^\w.-]+/g, '_').replace(/\.pdf$/i, '').slice(0, 80) || 'document') + '.pdf';
 
+// Auteur de l'impression : prénoms et NOM de l'agent, à défaut l'identifiant du compte
+const auteur = (u) => {
+  const nom = [u?.agent?.prenoms, u?.agent?.nom ? String(u.agent.nom).toUpperCase() : null].filter(Boolean).join(' ').trim();
+  return (nom || u?.username || 'utilisateur inconnu').slice(0, 120);
+};
+
 router.post('/', corpsHtml, async (req, res) => {
   try {
     const html = typeof req.body === 'string' ? req.body : '';
     if (!/^\s*<!doctype html>/i.test(html)) return res.status(400).json({ message: 'Document invalide.' });
     const pdf = await imprimer(html, {
       paysage: req.query.orientation === 'paysage',
-      pied: `MICA – SONABHY · imprimé le ${new Date().toLocaleString('fr-FR', { timeZone: 'Africa/Ouagadougou' })}`,
+      pied: `MICA – SONABHY · imprimé par ${auteur(req.user)} le ${new Date().toLocaleString('fr-FR', { timeZone: 'Africa/Ouagadougou' })}`,
     });
     res.set({
       'Content-Type': 'application/pdf',

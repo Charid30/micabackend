@@ -136,6 +136,10 @@ const decrire = async (methode, chemin, corps) => {
   if (fixe) return fixe;
   if (deux === 'saisie' && SAISIES[racine]) return decrireSaisie(racine, c);
   if (racine === 'rdc') return decrireRdc(methode, segments, c);
+  if (racine === 'administration' && deux === 'sauvegardes' && quatre === 'telecharger') {
+    const s = await require('../models').Sauvegarde.findByPk(trois).catch(() => null);
+    return `Téléchargement de la sauvegarde ${s?.fichier || `n° ${trois}`}`;
+  }
 
   if (racine === 'rapports' && id) {
     const sem = await semaine(id);
