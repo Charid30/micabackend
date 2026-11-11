@@ -28,6 +28,28 @@ router.delete('/abonnement', async (req, res) => {
   catch (e) { sendError(res, e, 400); }
 });
 
+// Application mobile : abonnement du telephone aux notifications (jeton Firebase)
+const jetonValide = (j) => typeof j === 'string' && j.length >= 20 && j.length <= 512 && /^[\w:.\-]+$/.test(j);
+router.post('/mobile', async (req, res) => {
+  try {
+    const { jeton, plateforme, appareil } = req.body || {};
+    if (!jetonValide(jeton)) return res.status(400).json({ message: 'Jeton de notification invalide.' });
+    res.json(await require('../services/fcm.service').enregistrer(req.user, { jeton, plateforme, appareil }));
+  } catch (e) { sendError(res, e, 400); }
+});
+router.delete('/mobile', async (req, res) => {
+  try {
+    const { jeton } = req.body || {};
+    if (!jetonValide(jeton)) return res.status(400).json({ message: 'Jeton de notification invalide.' });
+    res.json(await require('../services/fcm.service').retirer(req.user, jeton));
+  } catch (e) { sendError(res, e, 400); }
+});
+
+// Alertes du compte (onglet « Alertes » sur telephone) : stocks, saisies du jour, securite, rapport publie
+router.get('/alertes', async (req, res) => {
+  try { res.json(await require('../services/alertes.service').alertesUtilisateur(req.user)); } catch (e) { sendError(res, e); }
+});
+
 router.post('/test', async (req, res) => {
   try { res.json(await service.tester(req.user)); } catch (e) { sendError(res, e, 400); }
 });

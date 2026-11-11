@@ -22,7 +22,12 @@ const droitsDe = (user) => {
 
 exports.getSaisieData = async (req, res) => {
   try {
-    res.json(await stocksService.getSaisieData(req.user, droitsDe(req.user)));
+    // ?date=AAAA-MM-JJ : consultation d'un jour passe (lecture seule)
+    const date = req.query.date;
+    if (date !== undefined && !(typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)))) {
+      return res.status(400).json({ message: 'Date invalide.' });
+    }
+    res.json(await stocksService.getSaisieData(req.user, droitsDe(req.user), { date }));
   } catch (err) {
     sendError(res, err);
   }

@@ -55,6 +55,8 @@ const publierRapportSemaine = async () => {
       await require('./frequence.service').reporterPermanents(rapport).catch(e => console.error('[Scheduler] Report des valeurs permanentes :', e.message));
       await rapport.update({ statut: 'PUBLIE', date_publication: maintenant, updated_at: maintenant });
       console.log(`[Scheduler] Rapport semaine ${rapport.semaine_iso}/${rapport.annee} (au ${rapport.date_fin}) publié.`);
+      // Document du PDF enregistre des la publication (application mobile)
+      require('./rapport-pdf.service').preparerALaPublication(rapport);
     }
     // Notification push : seulement le plus recent si plusieurs semaines sont rattrapees
     await require('./notifications.service').notifierRapportPublie(aPublier[aPublier.length - 1]);

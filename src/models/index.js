@@ -736,6 +736,19 @@ const PushAbonnement = sequelize.define('PushAbonnement', {
   ...auditFields,
 }, { tableName: 'push_abonnements', timestamps: false });
 
+// ── PUSH MOBILE : jetons Firebase des telephones (application mobile)
+const PushMobile = sequelize.define('PushMobile', {
+  id:               { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  utilisateur_id:   { type: DataTypes.INTEGER, allowNull: false },
+  jeton:            { type: DataTypes.STRING(512), allowNull: false },
+  jeton_hash:       { type: DataTypes.CHAR(64), allowNull: false },
+  plateforme:       { type: DataTypes.STRING(10), allowNull: false, defaultValue: 'android' },
+  appareil:         { type: DataTypes.STRING(120), allowNull: true },
+  cree_le:          { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  vu_le:            { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  dernier_envoi_at: { type: DataTypes.DATE, allowNull: true },
+}, { tableName: 'push_mobiles', timestamps: false });
+
 // ── DETECTION D'INTRUSION : attaques detectees et adresses bannies
 const SecuriteEvenement = sequelize.define('SecuriteEvenement', {
   id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -764,6 +777,7 @@ const IpBannie = sequelize.define('IpBannie', {
 module.exports = {
   sequelize,
   PushAbonnement,
+  PushMobile,
   SecuriteEvenement,
   IpBannie,
   EncoursLigne,

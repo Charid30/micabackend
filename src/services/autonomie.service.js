@@ -80,6 +80,7 @@ function calculerAutonomie({ depots, produits, stocks = {}, referentiels = {}, b
       return {
         produit_id: pr.id, produit_code: pr.code, produit_libelle: pr.libelle,
         saisi: !!stocks[k],   // stock saisi (ecran de saisie : saisi ce jour-la)
+        saisi_le: s.maj || null,
         stock_bacs: bacs, stock_embranchement: embranchement, volume_total: total,
         impompable, conso_moyenne: conso, objectif_jours: objectif,
         autonomie: round(autonomie), stock_securite: round(stockSecurite, 3),
@@ -234,8 +235,9 @@ async function chargerStocks(rapportId, dateStock, { jourExact = false } = {}) {
     if (stocks[k]) continue;
     const bacs = num(r.stock_bacs), embr = num(r.stock_embranchement);
     // Saisies anterieures a la separation bacs / embranchement : seul stock_disponible est renseigne
-    stocks[k] = bacs || embr ? { bacs, embranchement: embr, date_saisie: r.date_saisie }
-      : { bacs: num(r.stock_disponible), embranchement: 0, date_saisie: r.date_saisie };
+    // maj : heure du dernier enregistrement (affichee « Saisi a 07:42 » sur telephone)
+    stocks[k] = bacs || embr ? { bacs, embranchement: embr, date_saisie: r.date_saisie, maj: r.updated_at }
+      : { bacs: num(r.stock_disponible), embranchement: 0, date_saisie: r.date_saisie, maj: r.updated_at };
   }
   {
     for (const r of rows.filter(x => x.date_saisie === null && !exact(x.depot_id))) {

@@ -11,3 +11,6 @@ secrets/
 
 # Chrome des PDF (Puppeteer)
 .cache/
+
+# Documents des rapports publies (PDF fabrique par le serveur)
+storage/rapports/

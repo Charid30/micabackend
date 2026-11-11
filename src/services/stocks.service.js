@@ -11,6 +11,7 @@
 // Saisie quotidienne des stocks (stock en bacs, stock en embranchement) et des actions entreprises.
 // L'impompable et la consommation moyenne ne sont plus saisis ici : ce sont des valeurs de reference
 // (voir referentiel.service.js). Tous les calculs viennent de autonomie.service.js.
+const { Op } = require('sequelize');
 const { RapportHebdo, StockDepot, ActionStock, Depot } = require('../models');
 const { getOrCreateRapportSemaine } = require('../utils/rapport.utils');
 const { getAutonomie } = require('./autonomie.service');
@@ -33,10 +34,35 @@ const frequencesStocks = async () => ({
   INTERIEUR: await frequenceDe('stocks-int'), EXTERIEUR: await frequenceDe('stocks-ext'),
 });
 
-const getSaisieData = async (user, droits) => {
+const getSaisieData = async (user, droits, { date: jourVu = null } = {}) => {
+  const date = today();
+  // Consultation d'un jour passe (chevrons de la page) : lecture seule, rien n'est cree ni modifie.
+  // Le rapport est celui de la semaine de ce jour (publie ou non) ; aucun droit de saisie n'est rendu.
+  if (jourVu && jourVu !== date) {
+    if (jourVu > date) throw { status: 400, message: 'Les jours à venir ne peuvent pas être consultés.' };
+    const rapport = await RapportHebdo.findOne({ where: { del: 0, date_debut: { [Op.lte]: jourVu }, date_fin: { [Op.gte]: jourVu } } });
+    if (!rapport) throw { status: 404, message: 'Aucun rapport pour cette date.' };
+    const frequences = await frequencesStocks();
+    const typeDepot = {}; (await Depot.findAll({ attributes: ['id', 'type'] })).forEach(d => { typeDepot[d.id] = d.type; });
+    const autonomie = await getAutonomie(rapport, {
+      dateStock: jourVu, jourExact: (id) => frequences[typeDepot[id]] === 'QUOTIDIEN', depotIds: depotsRestreints(user),
+    });
+    return {
+      rapport: {
+        id: rapport.id, annee: rapport.annee, semaine_iso: rapport.semaine_iso,
+        date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
+      },
+      date_saisie: jourVu,
+      aujourdhui: date,
+      consultation: true,
+      frequences,
+      droits: { stocks: false, actions: false, depots: null },
+      ...autonomie,
+    };
+  }
+
   const rapport = await getOrCreateRapportSemaine(user.id);
   const depotIds = depotsRestreints(user);
-  const date = today();
   const frequences = await frequencesStocks();
   const typeDepot = {}; (await Depot.findAll({ attributes: ['id', 'type'] })).forEach(d => { typeDepot[d.id] = d.type; });
   // Quotidien : stocks du jour uniquement ; hebdomadaire / permanent : derniere saisie de la semaine
@@ -49,6 +75,7 @@ const getSaisieData = async (user, droits) => {
       date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut,
     },
     date_saisie: date,
+    aujourdhui: date,
     frequences,
     // depots : depots ou la saisie est permise (null = tous)
     droits: { ...droits, depots: droits.stocks ? depotsRestreints(user, true) : null },

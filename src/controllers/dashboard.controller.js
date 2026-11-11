@@ -16,7 +16,13 @@ exports.getSynthese = async (req, res) => {
   try {
     const id = req.query.rapport_id !== undefined ? parseInt(req.query.rapport_id, 10) : null;
     if (req.query.rapport_id !== undefined && !(id > 0)) return res.status(400).json({ message: 'Identifiant de rapport invalide.' });
-    res.json(await dashboardService.getSynthese(id));
+    const synthese = await dashboardService.getSynthese(id);
+    // Ventes par jour : seulement pour les comptes qui voient deja les ventes (ecran Ventes ou rapport),
+    // le droit « tableau de bord » seul ne doit pas les ouvrir
+    const voitVentes = req.user.is_admin || (req.user.permissions || []).some(p =>
+      ['ventes', 'rapports'].includes(p.module) && ['READ', 'WRITE'].includes(p.action));
+    if (!voitVentes) delete synthese.ventesJour;
+    res.json(synthese);
   } catch (err) {
     console.error('[Dashboard] ERREUR :', err.message);
     sendError(res, err);

@@ -183,6 +183,15 @@ function validatePasswordStrength(password) {
     throw { status: 400, message: 'Le mot de passe doit contenir au moins un caractère spécial (ex : @, #, !, %).' };
 }
 
+// Verification du mot de passe du compte connecte, sans rien modifier (application mobile : activation
+// du deverrouillage par empreinte). Erreur 400 (et non 401) : la session reste ouverte.
+const verifierMotDePasse = async (userId, motDePasse) => {
+  const user = await Utilisateur.scope('withPassword').findByPk(userId);
+  if (!user) throw { status: 404, message: 'Utilisateur introuvable.' };
+  if (!(await bcrypt.compare(String(motDePasse), user.password))) throw { status: 400, message: 'Mot de passe incorrect.' };
+  return { message: 'Mot de passe vérifié.' };
+};
+
 const changePassword = async (userId, ancienMotDePasse, nouveauMotDePasse) => {
   validatePasswordStrength(nouveauMotDePasse);
 
@@ -217,4 +226,4 @@ const forcedChangePassword = async (userId, newPassword) => {
   await sessions.revoquerToutes(userId);
 };
 
-module.exports = { login, loginDoubleAuth, getMe, changePassword, forcedChangePassword, validatePasswordStrength, issueToken };
+module.exports = { login, loginDoubleAuth, getMe, changePassword, forcedChangePassword, validatePasswordStrength, issueToken, verifierMotDePasse };

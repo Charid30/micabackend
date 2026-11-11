@@ -152,6 +152,8 @@ const archiver = async (rapportId, userId) => {
     updated_by: userId,
   });
   await require('./notifications.service').notifierRapportPublie(rapport);
+  // Document du PDF enregistre des la publication (application mobile)
+  require('./rapport-pdf.service').preparerALaPublication(rapport, userId);
   return { message: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} archivé.` };
 };
 
@@ -161,6 +163,7 @@ const supprimer = async (rapportId, userId) => {
   const rapport = await RapportHebdo.findOne({ where: { id: rapportId, del: 0 } });
   if (!rapport) throw { status: 404, message: 'Rapport introuvable.' };
   await rapport.update({ del: 1, deleted_at: new Date(), deleted_by: userId, updated_by: userId, updated_at: new Date() });
+  require('./rapport-pdf.service').oublier(rapport.id);
   return { message: `Rapport semaine ${rapport.semaine_iso}/${rapport.annee} supprimé.` };
 };
 

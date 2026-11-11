@@ -30,7 +30,7 @@ const MODULES = {
 // Routes non journalisees ici : connexion / deconnexion (historique des connexions dedie) ;
 // abonnement aux notifications : rattachement automatique du navigateur a chaque visite, sans interet ;
 // impression PDF : simple lecture, rien n'est modifie
-const IGNOREES = ['/api/auth/login', '/api/auth/logout', '/api/auth/login/2fa', '/api/notifications/abonnement', '/api/pdf'];
+const IGNOREES = ['/api/auth/login', '/api/auth/logout', '/api/auth/login/2fa', '/api/notifications/abonnement', '/api/notifications/mobile', '/api/pdf'];
 const ROUTES_MASQUEES = IGNOREES.flatMap(r => ['POST', 'DELETE'].map(m => `${m} ${r}`));
 const SECRET = /pass|mot_de_passe|secret|token|jeton|code/i;
 
@@ -52,6 +52,7 @@ const libelleAction = (methode, chemin) => {
   if (/\/archiver$/.test(chemin)) return 'Archivage';
   if (/\/saisie$/.test(chemin)) return 'Saisie';
   if (/change-password|reset-password/.test(chemin)) return 'Mot de passe';
+  if (/verifier-mot-de-passe/.test(chemin)) return 'Vérification du mot de passe (empreinte mobile)';
   if (/2fa/.test(chemin)) return 'Double authentification';
   if (/\/permissions$/.test(chemin)) return 'Permissions';
   if (/\/sauvegardes/.test(chemin)) return 'Sauvegarde';

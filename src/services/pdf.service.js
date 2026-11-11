@@ -77,8 +77,29 @@ const imprimer = async (html, { paysage = false, pied = '' } = {}) => {
   }
 };
 
+/**
+ * Page de navigation (JavaScript actif, reseau ouvert) pour capturer une page de la plateforme
+ * (rapport-pdf.service : document du rapport). Partage les memes tours que les impressions.
+ * @param {(page: import('puppeteer').Page) => Promise<any>} fn
+ */
+const avecPage = async (fn) => {
+  await prendreTour();
+  let page = null;
+  try {
+    const nav = await obtenirNavigateur();
+    // Contexte isole : le cookie de session pose pour la capture ne survit pas a la page
+    const contexte = await nav.createBrowserContext();
+    page = await contexte.newPage();
+    page.setDefaultTimeout(DELAI_MS);
+    try { return await fn(page); } finally { await contexte.close().catch(() => {}); page = null; }
+  } finally {
+    if (page) await page.close().catch(() => {});
+    rendreTour();
+  }
+};
+
 const fermer = async () => { if (navigateur) await navigateur.close().catch(() => {}); };
 process.once('SIGINT', fermer);
 process.once('SIGTERM', fermer);
 
-module.exports = { imprimer, fermer };
+module.exports = { imprimer, avecPage, fermer };

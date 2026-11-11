@@ -46,6 +46,11 @@ router.post('/login/2fa', loginLimiter, v.codeDoubleAuth, authController.loginDo
 router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.me);
 router.put('/change-password', authenticate, passwordLimiter, v.changePassword, authController.changePassword);
+// Verification du mot de passe (application mobile : activation de l'empreinte) ; meme limite de tentatives
+router.post('/verifier-mot-de-passe', authenticate, passwordLimiter, v.doubleAuthMotDePasse, async (req, res) => {
+  try { res.json(await require('../services/auth.service').verifierMotDePasse(req.user.id, req.body.mot_de_passe)); }
+  catch (err) { require('../utils/http-error').sendError(res, err, 400); }
+});
 router.put('/force-change-password', authenticate, passwordLimiter, v.forcedChangePassword, authController.forcedChangePassword);
 
 module.exports = router;

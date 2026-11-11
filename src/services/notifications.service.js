@@ -78,6 +78,15 @@ const desabonner = async (user, endpoint) => {
 // payload : { titre, corps, url, tag }
 const envoyer = async (utilisateurIds, payload) => {
   if (!utilisateurIds.length) return 0;
+  // Mêmes notifications sur les téléphones (application mobile, Firebase)
+  const mobiles = require('./fcm.service').envoyer(utilisateurIds, payload).catch((e) => {
+    console.error('[FCM]', e.message);
+    return 0;
+  });
+  return (await envoyerNavigateurs(utilisateurIds, payload)) + (await mobiles);
+};
+
+const envoyerNavigateurs = async (utilisateurIds, payload) => {
   chargerCles();
   const abonnements = await PushAbonnement.findAll({ where: { utilisateur_id: utilisateurIds, del: 0 } });
   const message = JSON.stringify(payload);

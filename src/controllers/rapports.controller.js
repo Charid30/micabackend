@@ -55,6 +55,22 @@ exports.exportExcel = async (req, res) => {
   }
 };
 
+exports.pdf = async (req, res) => {
+  try {
+    const { pdf, fichier } = await require('../services/rapport-pdf.service').pdfDuRapport(parseInt(req.params.id, 10), req.user);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${String(fichier).replace(/[^\w.-]/g, '_')}"`,
+      'Content-Length': pdf.length,
+      'Cache-Control': 'no-store',
+    });
+    res.end(pdf);
+  } catch (err) {
+    console.error('[Rapports] GET pdf :', err.message);
+    sendError(res, err.status ? err : { status: 500, message: 'Impossible de générer le PDF.' });
+  }
+};
+
 exports.supprimer = async (req, res) => {
   try {
     res.json(await supprimer(req.params.id, req.user.id));

@@ -99,6 +99,29 @@ const getSynthese = async (rapportIdDemande = null) => {
   // Encours fournisseurs par produit (menu Encours) : cumul, besoin, taux de couverture
   const enc = await require('./encoursLivraison.service').getEncours(rapport);
 
+  // Stock national (depots interieurs, m³) et evolution par rapport au rapport precedent
+  // (en-tete du tableau de bord sur telephone)
+  const totalInterieur = (a) => a.synthese_interieure.reduce((t, x) => t + (Number(x.volume_total) || 0), 0);
+  const stockNational = totalInterieur(auto);
+  let stockPrecedent = null;
+  const [precedent] = await sequelize.query(
+    'SELECT id FROM rapports_hebdo WHERE del = 0 AND date_fin < :debut ORDER BY date_fin DESC LIMIT 1',
+    { type: QueryTypes.SELECT, replacements: { debut: rapport.date_debut } }
+  );
+  if (precedent) {
+    const autoPrec = await getAutonomie(await RapportHebdo.findByPk(precedent.id)).catch(() => null);
+    if (autoPrec) stockPrecedent = totalInterieur(autoPrec);
+  }
+
+  // Ventes de la semaine par jour (saisie quotidienne) ; date nulle : saisie hebdomadaire
+  const ventesJour = await sequelize.query(`
+    SELECT date_saisie AS date, COALESCE(SUM(quantite), 0) AS quantite
+    FROM ventes_marketeurs
+    WHERE rapport_id = :rapportId AND del = 0
+    GROUP BY date_saisie
+    ORDER BY date_saisie
+  `, { type: QueryTypes.SELECT, replacements: { rapportId } });
+
   // Alertes : chaque depot x produit sous l'objectif (rouge ou jaune)
   const alertes = [...auto.depots_interieurs, ...auto.depots_exterieurs].flatMap(d => d.lignes
     .filter(l => l.couleur === 'rouge' || l.couleur === 'jaune')
@@ -118,6 +141,12 @@ const getSynthese = async (rapportIdDemande = null) => {
     creanceEtat:          etat.creancesEtat?.montant ?? 0,
     situationEtat:        etat,
     alertes,
+    stockNational: {
+      total: Math.round(stockNational),
+      precedent: stockPrecedent === null ? null : Math.round(stockPrecedent),
+      evolution_pct: stockPrecedent > 0 ? Math.round(((stockNational - stockPrecedent) / stockPrecedent) * 1000) / 10 : null,
+    },
+    ventesJour: ventesJour.map(v => ({ date: v.date, quantite: Math.round(Number(v.quantite) || 0) })),
     encours: { produits: enc.produits.map(({ produit, cumul, besoin, taux }) => ({ produit, cumul, besoin, taux })), total: enc.total },
     stocksInterieurs: auto.synthese_interieure.map(s => ({
       produit:         s.produit_libelle,

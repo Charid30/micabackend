@@ -19,6 +19,8 @@ router.get('/liste', authorizeAny(['rapports', 'READ'], ['dashboard', 'READ']), 
 router.get('/:id/apercu', authorize('rapports', 'READ'), v.idParam, controller.getApercu);
 // Export Excel au format du classeur Indicateurs.xlsx (onglets Autonomie et Treso)
 router.get('/:id/export-excel', authorize('rapports', 'READ'), v.idParam, controller.exportExcel);
+// PDF fabrique par le serveur (application mobile) : meme document que le bouton de la plateforme
+router.get('/:id/pdf', authorize('rapports', 'READ'), v.idParam, controller.pdf);
 
 // Archivage : réservé aux utilisateurs avec permission WRITE sur rapports
 router.post('/:id/archiver', authorize('rapports', 'WRITE'), controller.archiver);
