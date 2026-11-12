@@ -75,7 +75,7 @@ const SIGNATURES = [
     /(\{\{|\$\{)\s*7\s*\*\s*7\s*\}/,
   ] },
 ];
-const CHEMINS_SENSIBLES = /(\.\.[\\/]|\.(php\d?|aspx?|jsp|cgi|env|git|svn|htaccess|htpasswd|bak|sql|ds_store)(\/|$)|wp-admin|wp-login|xmlrpc|phpmyadmin|actuator|cgi-bin|manager\/html|\.aws)/i;
+const CHEMINS_SENSIBLES = /(\.\.[\\/]|\.(php\d?|aspx?|jsp|cgi|env|git|svn|hg|ssh|htaccess|htpasswd|bak|sql|ds_store)(\/|$)|wp-admin|wp-login|wp-content|wp-includes|xmlrpc|phpmyadmin|actuator|cgi-bin|manager\/html|\.aws)/i;
 const OUTILS = /\b(sqlmap|nikto|nmap|masscan|wpscan|acunetix|nessus|openvas|burpsuite|dirbuster|gobuster|feroxbuster|ffuf|nuclei|hydra|zgrab|havij|w3af|arachni)\b/i;
 const CLES_DANGEREUSES = /^(__proto__|prototype|\$(ne|gt|gte|lt|lte|in|nin|or|and|where|regex|exists))$/;
 const COMMENTAIRE_SQL = /['"]\s*(--|#|\/\*)/;           // identifiant du type  admin'--
