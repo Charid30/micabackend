@@ -122,7 +122,7 @@ const start = async () => {
     // En production, seule l'API derriere Apache est joignable : un acces direct au port permettrait
     // de falsifier l'adresse transmise (X-Forwarded-For) et de contourner ou detourner le bannissement
     app.listen(PORT, process.env.HOST || (isProd ? '127.0.0.1' : undefined), () => {
-      console.log(`Serveur démarré sur http://localhost:${PORT}`);
+      console.log(`Indicateur SONABHY API v${require('../package.json').version} : serveur démarré sur http://localhost:${PORT}`);
     });
   } catch (err) {
     console.error('Erreur de démarrage :', err.message);
