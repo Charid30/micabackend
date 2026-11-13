@@ -82,19 +82,23 @@ const getSynthese = async (rapportIdDemande = null) => {
   };
 
   // Camions
-  const [camions] = await sequelize.query(`
-    SELECT
-      COALESCE(SUM(camions_charges), 0)    AS camionsCharges,
-      COALESCE(SUM(objectif_journalier), 0) AS objectif
-    FROM chargements_corridors
-    WHERE rapport_id = :rapportId AND del = 0
-  `, { type: QueryTypes.SELECT, replacements: { rapportId } });
+  const camionsDe = async (id) => {
+    const [c] = await sequelize.query(`
+      SELECT
+        COALESCE(SUM(camions_charges), 0)    AS camionsCharges,
+        COALESCE(SUM(objectif_journalier), 0) AS objectif
+      FROM chargements_corridors
+      WHERE rapport_id = :id AND del = 0
+    `, { type: QueryTypes.SELECT, replacements: { id } });
+    const charges = parseInt(c?.camionsCharges || 0);
+    const objectif = parseInt(c?.objectif || 0);
+    return { charges, taux: objectif > 0 ? Math.round((charges / objectif) * 1000) / 1000 : 0 };
+  };
+  const camions = await camionsDe(rapportId);
 
   // Situation avec l'Etat (tresorerie du rapport publie)
   const etat = situationEtat(rapport, await getTresorerie(rapport));
 
-  const charges  = parseInt(camions?.camionsCharges || 0);
-  const objectif = parseInt(camions?.objectif || 0);
 
   // Encours fournisseurs par produit (menu Encours) : cumul, besoin, taux de couverture
   const enc = await require('./encoursLivraison.service').getEncours(rapport);
@@ -104,14 +108,27 @@ const getSynthese = async (rapportIdDemande = null) => {
   const totalInterieur = (a) => a.synthese_interieure.reduce((t, x) => t + (Number(x.volume_total) || 0), 0);
   const stockNational = totalInterieur(auto);
   let stockPrecedent = null;
+  // Semaine precedente : comparaison N / N-1 (cartes et tableau des stocks)
+  let autoPrec = null;
+  let comparaison = null;
   const [precedent] = await sequelize.query(
     'SELECT id FROM rapports_hebdo WHERE del = 0 AND date_fin < :debut ORDER BY date_fin DESC LIMIT 1',
     { type: QueryTypes.SELECT, replacements: { debut: rapport.date_debut } }
   );
   if (precedent) {
-    const autoPrec = await getAutonomie(await RapportHebdo.findByPk(precedent.id)).catch(() => null);
+    const rapportPrec = await RapportHebdo.findByPk(precedent.id);
+    autoPrec = await getAutonomie(rapportPrec).catch(() => null);
     if (autoPrec) stockPrecedent = totalInterieur(autoPrec);
+    const camionsPrec = await camionsDe(precedent.id);
+    comparaison = {
+      rapport: { id: rapportPrec.id, semaine_iso: rapportPrec.semaine_iso, annee: rapportPrec.annee, date_debut: rapportPrec.date_debut, date_fin: rapportPrec.date_fin },
+      autonomieMoyenneInt: autoPrec ? Math.round(moyenne(autoPrec.synthese_interieure) * 10) / 10 : null,
+      autonomieMoyenneExt: autoPrec ? Math.round(moyenne(autoPrec.synthese_exterieure) * 10) / 10 : null,
+      camionsCharges: camionsPrec.charges,
+      tauxRealisation: camionsPrec.taux,
+    };
   }
+  const precedentDe = (produitId) => autoPrec?.synthese_interieure.find(x => x.produit_id === produitId) || null;
 
   // Ventes de la semaine par jour (saisie quotidienne) ; date nulle : saisie hebdomadaire
   const ventesJour = await sequelize.query(`
@@ -135,8 +152,10 @@ const getSynthese = async (rapportIdDemande = null) => {
     rapport:              { id: rapport.id, semaine_iso: rapport.semaine_iso, annee: rapport.annee, date_debut: rapport.date_debut, date_fin: rapport.date_fin, statut: rapport.statut },
     // Semaine non publiee : chiffres provisoires (saisie en cours)
     provisoire:           rapport.statut !== 'PUBLIE',
-    camionsCharges:       charges,
-    tauxRealisation:      objectif > 0 ? Math.round((charges / objectif) * 1000) / 1000 : 0,
+    camionsCharges:       camions.charges,
+    tauxRealisation:      camions.taux,
+    // Semaine precedente (null : pas de semaine avant celle-ci)
+    comparaison,
     detteEtat:            etat.dettesEtat?.montant ?? 0,
     creanceEtat:          etat.creancesEtat?.montant ?? 0,
     situationEtat:        etat,
@@ -150,6 +169,8 @@ const getSynthese = async (rapportIdDemande = null) => {
     encours: { produits: enc.produits.map(({ produit, cumul, besoin, taux }) => ({ produit, cumul, besoin, taux })), total: enc.total },
     stocksInterieurs: auto.synthese_interieure.map(s => ({
       produit:         s.produit_libelle,
+      stockPrecedent:  precedentDe(s.produit_id)?.volume_total ?? null,
+      autonomiePrecedente: precedentDe(s.produit_id)?.autonomie ?? null,
       stockDisponible: s.volume_total,
       stockTonnes:     s.volume_total_tonnes,
       autonomie:       s.autonomie ?? 0,

@@ -109,4 +109,4 @@ const restartScheduler = async () => {
   await startScheduler();
 };
 
-module.exports = { startScheduler, restartScheduler, publierRapportSemaine };
+module.exports = { startScheduler, restartScheduler, publierRapportSemaine, heureRappel };

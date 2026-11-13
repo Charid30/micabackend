@@ -29,6 +29,17 @@ router.get('/journalier', anyRead, async (req, res) => {
     res.json(await svc.getJournalier({ rapportId: entier(req.query.rapport_id), depotId: entier(req.query.depot_id), produitId: entier(req.query.produit_id) }));
   } catch (e) { sendError(res, e); }
 });
+// Export Excel des saisies d'une periode (?debut=AAAA-MM-JJ&fin=AAAA-MM-JJ), onglets selon les droits du compte
+router.get('/export', anyRead, async (req, res) => {
+  try {
+    const { buffer, filename } = await require('../services/export-historique.service')
+      .exporterHistorique(req.user, { debut: String(req.query.debut || ''), fin: String(req.query.fin || '') });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(buffer));
+  } catch (e) { sendError(res, e); }
+});
 router.get('/stocks',     anyRead, async (req, res) => { try { res.json(await svc.getStocks(parse(req)));     } catch (e) { sendError(res, e); } });
 router.get('/corridors',  anyRead, async (req, res) => { try { res.json(await svc.getCorridors(parse(req)));  } catch (e) { sendError(res, e); } });
 router.get('/tresorerie', anyRead, async (req, res) => { try { res.json(await svc.getTresorerie(parse(req))); } catch (e) { sendError(res, e); } });

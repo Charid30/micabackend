@@ -6,11 +6,28 @@ Numérotation `MAJEUR.MINEUR.CORRECTIF` :
 - **correctif** : corrections de bugs.
 
 Chaque version est marquée dans git par une étiquette (`v2.0.0`…). Le backend et la plateforme web
-portent le même numéro et se déploient ensemble. La version s'affiche au démarrage du serveur
+partagent le même numéro majeur.mineur ; le correctif avance séparément quand un seul des deux change. La version s'affiche au démarrage du serveur
 (journaux PM2) : `Indicateur SONABHY API v2.0.0 : serveur démarré…`.
 
 Changer de version : `npm version correctif|mineur|majeur` (ou `npm version 2.1.0`), puis
 `git push --follow-tags`.
+
+## [2.1.0] – 13/11/2026
+
+### Tableau de bord
+- Comparaison avec la semaine précédente : autonomies moyennes, camions chargés et taux de réalisation
+  de la semaine N-1 ; stock et autonomie N-1 de chaque produit (`GET /dashboard/synthese` → `comparaison`).
+
+### Suivi des saisies (nouveau)
+- `GET /dashboard/saisies?jours=7` (droit Tableau de bord, 31 jours au plus) : grille par dépôt et par menu
+  des saisies quotidiennes (à l'heure, après l'heure du rappel, en retard, manquante, non attendue),
+  état des saisies hebdomadaires de la semaine en cours, dernières saisies du journal d'audit.
+
+### Historique
+- Export Excel des saisies d'une période (`GET /historique/export?debut=&fin=`, un an au plus) :
+  synthèse hebdomadaire des stocks intérieurs, puis stocks, dépôts intérieurs, corridors et ventes,
+  chaque saisie avec son auteur et son heure. Onglets selon les droits du compte ; un compte limité à
+  certains dépôts n'exporte que leurs stocks.
 
 ## [2.0.0] – 12/11/2026
 
