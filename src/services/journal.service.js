@@ -25,7 +25,7 @@ const MODULES = {
   'achats-traders': 'Achats traders', ventes: 'Ventes', recommandations: 'Recommandations', 'caf-moyen': 'CAF moyen', centrales: 'Centrale SONABEL', rdc: 'RDC',
   rapports: 'Rapports', utilisateurs: 'Comptes utilisateurs', agents: 'Agents', directions: 'Directions',
   entreprises: 'Entreprises', parametres: 'Paramètres', produits: 'Produits', depots: 'Dépôts', fournisseurs: 'Fournisseurs',
-  marketeurs: 'Marketeurs', messages: 'Messages', profil: 'Mon profil', auth: 'Authentification', administration: 'Administration',
+  marketeurs: 'Marketeurs', messages: 'Messages', dashboard: 'Suivi des saisies', profil: 'Mon profil', auth: 'Authentification', administration: 'Administration',
 };
 // Routes non journalisees ici : connexion / deconnexion (historique des connexions dedie) ;
 // abonnement aux notifications : rattachement automatique du navigateur a chaque visite, sans interet ;
@@ -57,6 +57,7 @@ const libelleAction = (methode, chemin) => {
   if (/\/permissions$/.test(chemin)) return 'Permissions';
   if (/\/sauvegardes/.test(chemin)) return 'Sauvegarde';
   if (/^\/api\/messages\/\d+\/lu$/.test(chemin)) return 'Accusé de lecture';
+  if (/\/saisies\/relancer$/.test(chemin)) return 'Relance';
   if (/^\/api\/messages\/?$/.test(chemin) && methode === 'POST') return 'Envoi';
   return METHODES[methode] || methode;
 };

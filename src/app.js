@@ -33,6 +33,7 @@ const { startScheduler } = require('./services/scheduler.service');
 const { startSauvegardes } = require('./services/sauvegarde.service');
 const { journaliser, startPurgeJournal } = require('./services/journal.service');
 const intrusion = require('./services/intrusion.service');
+const { startAuditDependances } = require('./services/audit-dependances.service');
 const { signalerEcritures } = require('./services/temps-reel.service');
 
 const app = express();
@@ -117,6 +118,7 @@ const start = async () => {
     await startScheduler();
     await startSauvegardes();
     startPurgeJournal();
+    startAuditDependances();
     await intrusion.startIntrusion();
 
     // En production, seule l'API derriere Apache est joignable : un acces direct au port permettrait

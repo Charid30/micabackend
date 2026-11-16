@@ -12,6 +12,21 @@ partagent le même numéro majeur.mineur ; le correctif avance séparément quan
 Changer de version : `npm version correctif|mineur|majeur` (ou `npm version 2.1.0`), puis
 `git push --follow-tags`.
 
+## [2.3.0] – 16/11/2026
+
+### Relance des retardataires
+- `POST /dashboard/saisies/relancer` (droit « Suivi des saisies ») : chaque agent chargé d'une saisie du jour
+  non faite (droit d'écriture sur le menu et, pour les stocks, sur le dépôt ; intérims compris) reçoit une
+  notification de mise à jour listant ses saisies, plus une notification du navigateur. Les administrateurs
+  ne sont pas relancés ; une relance au plus par quart d'heure ; saisies sans agent responsable signalées.
+- Inscrite au journal d'audit (« Relance des agents dont une saisie du jour n'est pas faite »).
+
+### Revue mensuelle des dépendances
+- Le 1er du mois à 08h00 (`AUDIT_DEPENDANCES_CRON`), `npm audit` de l'API et de la plateforme web
+  (`AUDIT_DEPENDANCES_WEB_DIR`) ; résultat inscrit au journal d'audit (auteur « Système ») ;
+  vulnérabilité ou revue impossible : notification aux administrateurs.
+- Revue du 16/11/2026 : aucune vulnérabilité connue (API et plateforme web).
+
 ## [2.2.0] – 16/11/2026
 
 ### Messages ciblés

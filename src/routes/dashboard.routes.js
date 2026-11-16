@@ -16,6 +16,12 @@ const dashboardController = require('../controllers/dashboard.controller');
 router.get('/synthese', authorize('dashboard', 'READ'), dashboardController.getSynthese);
 
 // Suivi des saisies : qui a saisi quoi et quand, retards par depot (?jours=7, 31 au plus) ; droit dedie
+// Relance des agents dont une saisie du jour manque (notification de mise à jour + notification du navigateur)
+router.post('/saisies/relancer', authorize('suivi-saisies', 'READ'), async (req, res) => {
+  try { res.json(await require('../services/messages.service').relancerRetardataires(req.user)); }
+  catch (e) { require('../utils/http-error').sendError(res, e, 400); }
+});
+
 router.get('/saisies', authorize('suivi-saisies', 'READ'), async (req, res) => {
   try {
     res.json(await require('../services/suivi-saisies.service').getSuivi({ jours: req.query.jours }));

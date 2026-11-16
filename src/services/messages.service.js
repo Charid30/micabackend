@@ -106,4 +106,65 @@ const marquerLu = async (user, messageId, ip) => {
   return { id: messageId, lu_le: d.lu_le };
 };
 
-module.exports = { envoyer, lister, retirer, aLire, marquerLu, TITRE_MAX, CONTENU_MAX };
+// ── Relance des retardataires (écran Suivi des saisies)
+// Chaque agent chargé d'une saisie du jour non faite reçoit une notification de mise à jour listant SES saisies
+// (droit d'écriture sur le menu et, pour les stocks, sur le dépôt ; intérims compris). Les administrateurs ne
+// sont pas relancés. Une relance au plus tous les quarts d'heure, pour ne pas harceler les agents.
+const DELAI_RELANCE_MS = 15 * 60 * 1000;
+let derniereRelance = 0;
+const heureFr = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Ouagadougou' }).replace(':', 'h');
+
+const relancerRetardataires = async (auteur) => {
+  const maintenant = Date.now();
+  if (maintenant - derniereRelance < DELAI_RELANCE_MS) {
+    throw erreur(429, `Une relance a déjà été envoyée à ${heureFr(new Date(derniereRelance))}. Nouvelle relance possible à ${heureFr(new Date(derniereRelance + DELAI_RELANCE_MS))}.`);
+  }
+  const notifications = require('./notifications.service');
+  const manquantes = await notifications.manquantesDuJour();
+  if (!manquantes.length) throw erreur(400, 'Toutes les saisies attendues aujourd\'hui sont faites : personne à relancer.');
+
+  const jour = new Date().toLocaleDateString('fr-FR', { timeZone: 'Africa/Ouagadougou' });
+  const envois = [];
+  const couvertes = new Set();
+  for (const u of await notifications.utilisateursActifs()) {
+    if (u.is_admin || u.id === auteur.id) continue;
+    const siennes = manquantes.filter((x) => notifications.aDroit(u, x.droit, 'WRITE', x.depot_id));
+    if (!siennes.length) continue;
+    siennes.forEach((x) => couvertes.add(x));
+    envois.push({ id: u.id, siennes });
+  }
+  if (!envois.length) throw erreur(400, 'Aucun agent n\'a le droit de saisie sur les saisies manquantes : attribuez les droits correspondants.');
+
+  derniereRelance = maintenant;
+  await sequelize.transaction(async (transaction) => {
+    for (const e of envois) {
+      const n = e.siennes.length;
+      const m = await Message.create({
+        titre: n > 1 ? `${n} saisies du jour à effectuer` : 'Saisie du jour à effectuer',
+        contenu: `Les saisies suivantes ne sont pas encore renseignées pour aujourd'hui (${jour}) :\n`
+          + e.siennes.map((x) => `• ${x.libelle}`).join('\n')
+          + '\n\nMerci de les effectuer dès que possible.',
+        created_by: auteur.id, updated_by: auteur.id,
+      }, { transaction });
+      await MessageDestinataire.create({ message_id: m.id, utilisateur_id: e.id }, { transaction });
+    }
+  });
+  const ids = envois.map((e) => e.id);
+  tempsReel.envoyerA(ids, 'message-recu');
+  tempsReel.diffuser('messages');
+  for (const e of envois) {   // notification du navigateur, en plus de la fenêtre dans l'application
+    notifications.envoyer([e.id], {
+      titre: 'Saisies du jour à effectuer', corps: e.siennes.slice(0, 4).map((x) => x.libelle).join(', '),
+      url: e.siennes[0].url, tag: `relance-${new Date().toISOString().slice(0, 10)}`,
+    }).catch(() => {});
+  }
+  const comptes = await Utilisateur.findAll({ where: { id: ids }, attributes: ['id', 'username'], include: [{ model: Agent, as: 'agent', attributes: ['nom', 'prenoms'] }] });
+  return {
+    personnes: ids.length,
+    saisies: manquantes.length,
+    sans_responsable: manquantes.filter((x) => !couvertes.has(x)).map((x) => x.libelle),
+    noms: comptes.map(nomComplet).sort((a, b) => a.localeCompare(b, 'fr')),
+  };
+};
+
+module.exports = { envoyer, lister, retirer, aLire, marquerLu, relancerRetardataires, TITRE_MAX, CONTENU_MAX };

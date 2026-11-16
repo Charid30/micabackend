@@ -194,6 +194,13 @@ const joursDuRappel = async (cle) => {
   return String(p?.valeur ?? '1,2,3,4,5,6,7').split(',').map(s => Number(s.trim())).filter(Boolean);
 };
 
+// Saisies du jour attendues et non faites, selon les jours du rappel automatique (NOTIF_SAISIE_JOURS / NOTIF_RDC_JOURS)
+const manquantesDuJour = async () => {
+  const jourIso = new Date().getUTCDay() || 7;            // Ouagadougou = UTC+0
+  const [jours, joursRdc] = await Promise.all([joursDuRappel('NOTIF_SAISIE_JOURS'), joursDuRappel('NOTIF_RDC_JOURS')]);
+  return saisiesManquantes(m => (m.filtre ? joursRdc : jours).includes(jourIso));
+};
+
 const rappelerSaisiesManquantes = async ({ force = false } = {}) => {
   try {
     const jourIso = new Date().getUTCDay() || 7;            // Ouagadougou = UTC+0
@@ -233,5 +240,5 @@ const tester = async (user) => {
 
 module.exports = {
   getClePublique, abonner, desabonner, envoyer, notifierRapportPublie, alerterAdministrateurs,
-  saisiesManquantes, rappelerSaisiesManquantes, tester, chargerCles,
+  saisiesManquantes, manquantesDuJour, rappelerSaisiesManquantes, tester, chargerCles, utilisateursActifs, aDroit,
 };

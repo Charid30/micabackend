@@ -49,6 +49,7 @@ const SAISIES = {
 };
 
 const FIXES = {
+  'POST dashboard/saisies/relancer': 'Relance des agents dont une saisie du jour n\'est pas faite',
   'PUT auth/change-password': 'Changement de son mot de passe',
   'PUT auth/force-change-password': 'Changement obligatoire de son mot de passe',
   'PUT profil': 'Modification de ses informations personnelles',
