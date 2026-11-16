@@ -1,6 +1,6 @@
 {
   "name": "mica-backend",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Backend API SONABHY/MICA - Gestion des stocks d'hydrocarbures",
   "main": "src/app.js",
   "scripts": {

@@ -16,7 +16,7 @@ const MODULES = [
   'stocks', 'impompable', 'referentiel-stocks', 'actions-stocks', 'corridors', 'depots-int', 'temps-attente',
   'veille-marche', 'veille-geo', 'achats-traders', 'encours-livraison', 'ventes',
   'tresorerie', 'tresorerie-lignes', 'recommandations', 'caf_moyen', 'centrales',
-  'rapports', 'administration', 'parametres', 'dashboard', 'rdc-ghana', 'rdc-benin', 'rdc-cote-ivoire', 'rdc-togo',
+  'rapports', 'administration', 'parametres', 'dashboard', 'suivi-saisies', 'rdc-ghana', 'rdc-benin', 'rdc-cote-ivoire', 'rdc-togo',
 ];
 
 // Droits reserves a une personne designee : jamais accordes en ecriture par un profil type,
@@ -25,7 +25,8 @@ const MODULES_DESIGNES = ['impompable', 'referentiel-stocks', 'actions-stocks', 
 
 // Menu RDC : jamais accorde par les profils types, attribue compte par compte
 const MODULES_RDC = ['rdc-ghana', 'rdc-benin', 'rdc-cote-ivoire', 'rdc-togo'];
-const modulesDesProfils = MODULES.filter(m => m !== 'administration' && !MODULES_RDC.includes(m));
+// Suivi des saisies (qui a saisi quoi et quand) : jamais accorde par un profil type, attribue compte par compte
+const modulesDesProfils = MODULES.filter(m => m !== 'administration' && m !== 'suivi-saisies' && !MODULES_RDC.includes(m));
 
 const PROFILS = {
   ADMIN: { is_admin: true, permissions: [] },

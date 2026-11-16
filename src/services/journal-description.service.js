@@ -141,6 +141,14 @@ const decrire = async (methode, chemin, corps) => {
     return `Téléchargement de la sauvegarde ${s?.fichier || `n° ${trois}`}`;
   }
 
+  if (racine === 'messages') {
+    const m = id ? await require('../models').Message.findByPk(id).catch(() => null) : null;
+    const titre = `« ${String(m?.titre || c.titre || `n° ${id}`).slice(0, 100)} »`;
+    if (trois === 'lu') return `Message ${titre} marqué comme lu`;
+    if (methode === 'DELETE') return `Retrait du message ${titre}`;
+    const n = Array.isArray(c.destinataires) ? c.destinataires.length : 0;
+    return `Envoi du message ${titre} à ${n} destinataire${n > 1 ? 's' : ''}`;
+  }
   if (racine === 'rapports' && id) {
     const sem = await semaine(id);
     const nom = sem ? `du rapport ${sem}` : `du rapport n° ${id}`;

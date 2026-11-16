@@ -749,6 +749,30 @@ const PushMobile = sequelize.define('PushMobile', {
   dernier_envoi_at: { type: DataTypes.DATE, allowNull: true },
 }, { tableName: 'push_mobiles', timestamps: false });
 
+// ── MESSAGES CIBLES : ecrits par un administrateur, affiches a la connexion jusqu'a lecture
+const Message = sequelize.define('Message', {
+  id:      { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  titre:   { type: DataTypes.STRING(150), allowNull: false },
+  contenu: { type: DataTypes.TEXT, allowNull: false },
+  ...auditFields,
+}, { tableName: 'messages', timestamps: false });
+
+const MessageDestinataire = sequelize.define('MessageDestinataire', {
+  id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  message_id:     { type: DataTypes.INTEGER, allowNull: false },
+  utilisateur_id: { type: DataTypes.INTEGER, allowNull: false },
+  lu_le:          { type: DataTypes.DATE, allowNull: true },
+  lu_ip:          { type: DataTypes.STRING(45), allowNull: true },
+  created_at:     { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+}, { tableName: 'messages_destinataires', timestamps: false });
+
+// constraints: false : les cles etrangeres sont creees par la migration 041. Declarees ici, elles formeraient
+// un cycle dans le graphe des modeles, et sequelize.sync() basculerait alors en mode « alter » au demarrage.
+Message.hasMany(MessageDestinataire, { foreignKey: 'message_id', as: 'destinataires', constraints: false });
+MessageDestinataire.belongsTo(Message, { foreignKey: 'message_id', as: 'message', constraints: false });
+MessageDestinataire.belongsTo(Utilisateur, { foreignKey: 'utilisateur_id', as: 'utilisateur', constraints: false });
+Message.belongsTo(Utilisateur, { foreignKey: 'created_by', as: 'auteur', constraints: false });
+
 // ── DETECTION D'INTRUSION : attaques detectees et adresses bannies
 const SecuriteEvenement = sequelize.define('SecuriteEvenement', {
   id:             { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -776,6 +800,8 @@ const IpBannie = sequelize.define('IpBannie', {
 
 module.exports = {
   sequelize,
+  Message,
+  MessageDestinataire,
   PushAbonnement,
   PushMobile,
   SecuriteEvenement,

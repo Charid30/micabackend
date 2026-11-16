@@ -44,6 +44,7 @@ router.use('/rdc', authenticate, require('./rdc.routes'));
 router.use('/referentiel-stocks', authenticate, require('./referentiel.routes'));
 router.use('/profil', authenticate, require('./profil.routes'));
 router.use('/notifications', authenticate, require('./notifications.routes'));
+router.use('/messages', authenticate, require('./messages.routes'));
 // Rafraichissement automatique : flux des signaux d'enregistrement
 router.get('/evenements', authenticate, require('../services/temps-reel.service').connecter);
 router.use('/administration', authenticate, require('./administration.routes'));

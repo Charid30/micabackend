@@ -12,6 +12,30 @@ partagent le même numéro majeur.mineur ; le correctif avance séparément quan
 Changer de version : `npm version correctif|mineur|majeur` (ou `npm version 2.1.0`), puis
 `git push --follow-tags`.
 
+## [2.2.0] – 16/11/2026
+
+### Messages ciblés
+- Migration `041_messages` : tables `messages` et `messages_destinataires` (une ligne par destinataire,
+  avec l'accusé de lecture : date, heure, adresse). **Sauvegarder la base avant `npm run migrate`.**
+- `POST /messages` (administrateurs) : envoi d'un message (titre 150 caractères, texte 2 000) à un ou
+  plusieurs comptes ; `GET /messages` : 100 derniers envois et accusés de lecture ; `DELETE /messages/:id` :
+  retrait (le message n'est plus présenté à ceux qui ne l'ont pas lu).
+- `GET /messages/a-lire` et `POST /messages/:id/lu` : messages non lus du compte connecté et accusé de
+  lecture (le premier clic fait foi).
+- Temps réel : le destinataire connecté reçoit le message aussitôt (signal ciblé `message-recu`) ; l'écran
+  de suivi des administrateurs se met à jour à chaque lecture.
+- Journal d'audit : envoi, accusé de lecture et retrait décrits avec le titre du message.
+
+### Corrections
+- Associations des messages déclarées sans contrainte côté modèle : déclarées avec, elles formaient un
+  cycle qui faisait passer `sequelize.sync()` en mode « alter » au démarrage.
+
+## [2.1.1] – 16/11/2026
+
+### Droits
+- Nouveau droit « Suivi des saisies » (`suivi-saisies`), attribué compte par compte (jamais par un profil
+  type) : il remplace le droit Tableau de bord pour `GET /dashboard/saisies`.
+
 ## [2.1.0] – 13/11/2026
 
 ### Tableau de bord

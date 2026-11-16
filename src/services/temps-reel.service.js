@@ -12,7 +12,7 @@
 // connectes quel ecran a change (flux Server-Sent Events). Le signal ne contient aucune donnee metier :
 // le navigateur recharge ensuite par les routes habituelles, avec les droits de son utilisateur.
 const SUJETS_IGNORES = ['auth', 'profil', 'notifications', 'evenements', 'pdf'];   // pdf : impression, rien n'est modifie
-const SUJETS_ADMIN = ['utilisateurs', 'agents', 'administration', 'intrusions', 'parametres'];
+const SUJETS_ADMIN = ['utilisateurs', 'agents', 'administration', 'intrusions', 'parametres', 'messages'];
 const BATTEMENT_MS = 25000;                // garde la connexion ouverte a travers Apache
 const DUREE_MAX_MS = 30 * 60 * 1000;       // reconnexion reguliere : la session est alors reverifiee
 const MAX_PAR_COMPTE = 8;
@@ -57,6 +57,16 @@ const diffuser = (sujet, { par = null, onglet = null } = {}) => {
   clients.forEach((c) => { if (c.admin || !SUJETS_ADMIN.includes(sujet)) ecrire(c, message); });
 };
 
+// Signal adressé à certains comptes seulement (message ciblé reçu ou retiré)
+const envoyerA = (utilisateurIds, sujet) => {
+  const ids = new Set(utilisateurIds);
+  if (!ids.size) return;
+  const message = `data: ${JSON.stringify({ sujet, par: null, onglet: null })}
+
+`;
+  clients.forEach((c) => { if (ids.has(c.utilisateurId)) ecrire(c, message); });
+};
+
 // Compte suspendu ou adresse bannie : flux coupe immediatement
 const fermer = ({ utilisateurId = null, ip = null }) => {
   clients.forEach((c) => {
@@ -77,4 +87,4 @@ const signalerEcritures = (req, res, next) => {
   next();
 };
 
-module.exports = { connecter, diffuser, fermer, signalerEcritures };
+module.exports = { connecter, diffuser, envoyerA, fermer, signalerEcritures };
