@@ -98,4 +98,23 @@ router.put('/securite', v.reglagesSecurite, async (req, res) => {
   try { res.json(await securite.saveReglages(req.body, req.user.id)); } catch (e) { sendError(res, e, 400); }
 });
 
+// ── Etat du systeme : sauvegardes, dependances, disque, base, sessions actives, points a traiter
+const etatSysteme = require('../services/etat-systeme.service');
+const idValide = (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ message: 'Identifiant invalide.' }); return null; }
+  return id;
+};
+router.get('/etat-systeme', async (req, res) => {
+  try { res.json(await etatSysteme.etat(req.sid)); } catch (e) { sendError(res, e); }
+});
+router.post('/etat-systeme/revue-dependances', async (req, res) => {
+  try { res.json(await etatSysteme.lancerRevue()); } catch (e) { sendError(res, e, 500); }
+});
+// Fermeture d'une session de n'importe quel compte (appareil perdu, depart d'un agent...)
+router.delete('/sessions/:id', async (req, res) => {
+  const id = idValide(req, res); if (!id) return;
+  try { res.json(await require('../services/session.service').fermerParAdministrateur(id, req.sid)); } catch (e) { sendError(res, e, 400); }
+});
+
 module.exports = router;

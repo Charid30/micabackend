@@ -78,7 +78,7 @@ exports.forcedChangePassword = async (req, res) => {
   try {
     await authService.forcedChangePassword(req.user.id, nouveauMotDePasse);
     // Les anciens jetons sont invalidés : on délivre une nouvelle session
-    setSessionCookie(res, await authService.issueToken(req.user, req.ip));
+    setSessionCookie(res, await authService.issueToken(req.user, req.ip, req.get('User-Agent')));
     res.json({ message: 'Mot de passe modifié avec succès.' });
   } catch (err) {
     sendError(res, err);
@@ -89,7 +89,7 @@ exports.changePassword = async (req, res) => {
   const { ancienMotDePasse, nouveauMotDePasse } = req.body;
   try {
     await authService.changePassword(req.user.id, ancienMotDePasse, nouveauMotDePasse);
-    setSessionCookie(res, await authService.issueToken(req.user, req.ip));
+    setSessionCookie(res, await authService.issueToken(req.user, req.ip, req.get('User-Agent')));
     res.json({ message: 'Mot de passe modifié avec succès.' });
   } catch (err) {
     sendError(res, err);

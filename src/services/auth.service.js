@@ -33,8 +33,8 @@ const JETON_2FA_DUREE = '5m';
 const issueToken2fa = (user) => jwt.sign({ id: user.id, etape: '2fa' }, jwtConfig.secret, { expiresIn: JETON_2FA_DUREE, algorithm: 'HS256' });
 
 // Jeton de session : porte l'identifiant de la session ouverte cote serveur (revocable)
-const issueToken = async (user, ip = null) => jwt.sign(
-  { id: user.id, username: user.username, sid: await sessions.ouvrir(user.id, ip) },
+const issueToken = async (user, ip = null, navigateur = null) => jwt.sign(
+  { id: user.id, username: user.username, sid: await sessions.ouvrir(user.id, ip, navigateur) },
   jwtConfig.secret,
   { expiresIn: jwtConfig.expiresIn, algorithm: 'HS256' }
 );
@@ -125,7 +125,7 @@ const ouvrirSession = async (user, ctx, motif) => {
   await journaliserConnexion(user.id, true, motif, ctx);
   await require('./interim.service').completerUtilisateur(user, { depot: true });
   const ex = user.totp_active_le ? { requise: false, echeance: null } : await doubleAuth.exigence(user);
-  return { token: await issueToken(user, ctx.ip), utilisateur: { ...profilSession(user, await chargerPolitique(), ex), session_inactivite_minutes: await sessions.minutesInactivite() } };
+  return { token: await issueToken(user, ctx.ip, ctx.navigateur), utilisateur: { ...profilSession(user, await chargerPolitique(), ex), session_inactivite_minutes: await sessions.minutesInactivite() } };
 };
 
 // Etape 2 : code de l'application d'authentification ou code de secours

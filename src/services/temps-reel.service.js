@@ -41,7 +41,7 @@ const connecter = (req, res) => {
   });
   res.write('retry: 5000\n\n');
   const c = {
-    res, utilisateurId: req.user.id, admin: !!req.user.is_admin,
+    res, utilisateurId: req.user.id, admin: !!req.user.is_admin, sid: req.sid || null,
     ip: String(req.ip || '').replace(/^::ffff:/, ''),
   };
   c.fin = setTimeout(() => fermerClient(c), DUREE_MAX_MS);
@@ -67,12 +67,16 @@ const envoyerA = (utilisateurIds, sujet) => {
   clients.forEach((c) => { if (ids.has(c.utilisateurId)) ecrire(c, message); });
 };
 
-// Compte suspendu ou adresse bannie : flux coupe immediatement
-const fermer = ({ utilisateurId = null, ip = null }) => {
+// Compte suspendu, adresse bannie ou session fermee a distance : flux coupe immediatement
+const fermer = ({ utilisateurId = null, ip = null, sids = null }) => {
+  const s = sids ? new Set(sids) : null;
   clients.forEach((c) => {
-    if ((utilisateurId && c.utilisateurId === utilisateurId) || (ip && c.ip === ip)) fermerClient(c);
+    if ((utilisateurId && c.utilisateurId === utilisateurId) || (ip && c.ip === ip) || (s && c.sid && s.has(c.sid))) fermerClient(c);
   });
 };
+
+// Comptes dont un ecran est ouvert en ce moment (flux temps reel actif)
+const comptesEnLigne = () => new Set([...clients].map((c) => c.utilisateurId));
 
 // Middleware : signale chaque ecriture reussie, une fois la reponse envoyee
 const signalerEcritures = (req, res, next) => {
@@ -87,4 +91,4 @@ const signalerEcritures = (req, res, next) => {
   next();
 };
 
-module.exports = { connecter, diffuser, envoyerA, fermer, signalerEcritures };
+module.exports = { connecter, diffuser, envoyerA, fermer, comptesEnLigne, signalerEcritures };

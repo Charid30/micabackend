@@ -58,6 +58,8 @@ const libelleAction = (methode, chemin) => {
   if (/\/sauvegardes/.test(chemin)) return 'Sauvegarde';
   if (/^\/api\/messages\/\d+\/lu$/.test(chemin)) return 'Accusé de lecture';
   if (/\/saisies\/relancer$/.test(chemin)) return 'Relance';
+  if (/\/sessions(\/|$)/.test(chemin)) return 'Fermeture de session';
+  if (/\/revue-dependances$/.test(chemin)) return 'Revue des dépendances';
   if (/^\/api\/messages\/?$/.test(chemin) && methode === 'POST') return 'Envoi';
   return METHODES[methode] || methode;
 };
@@ -71,7 +73,7 @@ const journaliser = (req, res, next) => {
     if (!req.user) return;                         // requete refusee avant authentification
     const segments = chemin.replace(/^\/api\//, '').split('/');
     const module = MODULES[segments[0]] || segments[0];
-    const base = await decrire(req.method, chemin, req.body).catch(() => null);
+    const base = await decrire(req.method, chemin, req.body, req.user.id).catch(() => null);
     const description = req.interimDe ? `${base || `${libelleAction(req.method, chemin)} – ${module}`} (intérim de ${req.interimDe})` : base;
     const id = segments.find(s => /^\d+$/.test(s));
     let details = null;

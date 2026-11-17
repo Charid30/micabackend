@@ -22,6 +22,20 @@ router.put('/', v.profil, async (req, res) => {
   try { res.json(await svc.updateProfil(req.user.id, req.body)); } catch (e) { sendError(res, e, 400); }
 });
 
+// ── Sessions actives : appareils connectes au compte, fermeture a distance
+const sessions = require('../services/session.service');
+router.get('/sessions', async (req, res) => {
+  try { res.json(await sessions.lister(req.user.id, req.sid)); } catch (e) { sendError(res, e); }
+});
+router.post('/sessions/fermer-autres', async (req, res) => {
+  try { res.json(await sessions.fermerAutres(req.user.id, req.sid)); } catch (e) { sendError(res, e, 400); }
+});
+router.delete('/sessions/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: 'Identifiant invalide.' });
+  try { res.json(await sessions.fermerUne(req.user.id, id, req.sid)); } catch (e) { sendError(res, e, 400); }
+});
+
 // ── Double authentification
 const doubleAuth = require('../services/double-auth.service');
 router.get('/2fa', async (req, res) => {

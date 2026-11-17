@@ -448,6 +448,7 @@ const Session = sequelize.define('Session', {
   sid:               { type: DataTypes.CHAR(32), allowNull: false },
   utilisateur_id:    { type: DataTypes.INTEGER, allowNull: false },
   ip:                { type: DataTypes.STRING(45), allowNull: true },
+  navigateur:        { type: DataTypes.STRING(255), allowNull: true },
   cree_le:           { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   derniere_activite: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   revoquee_le:       { type: DataTypes.DATE, allowNull: true },
@@ -772,6 +773,8 @@ Message.hasMany(MessageDestinataire, { foreignKey: 'message_id', as: 'destinatai
 MessageDestinataire.belongsTo(Message, { foreignKey: 'message_id', as: 'message', constraints: false });
 MessageDestinataire.belongsTo(Utilisateur, { foreignKey: 'utilisateur_id', as: 'utilisateur', constraints: false });
 Message.belongsTo(Utilisateur, { foreignKey: 'created_by', as: 'auteur', constraints: false });
+// Sessions actives (Etat du systeme) : la cle etrangere existe deja (migration 039)
+Session.belongsTo(Utilisateur, { foreignKey: 'utilisateur_id', as: 'utilisateur', constraints: false });
 
 // ── DETECTION D'INTRUSION : attaques detectees et adresses bannies
 const SecuriteEvenement = sequelize.define('SecuriteEvenement', {

@@ -71,6 +71,7 @@ const journaliserConnexion = async (utilisateurId, succes, motif, ctx = {}) => {
 // Libelle lisible du navigateur a partir de l'en-tete User-Agent
 const libelleNavigateur = (ua) => {
   if (!ua) return 'Inconnu';
+  if (/^Dart\//.test(ua)) return 'Application mobile MICA';   // client HTTP de l'application Flutter
   const nav = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
     : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Autre navigateur';
   const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /(iPhone|iPad)/.test(ua) ? 'iOS'

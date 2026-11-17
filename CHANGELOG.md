@@ -12,7 +12,27 @@ partagent le même numéro majeur.mineur ; le correctif avance séparément quan
 Changer de version : `npm version correctif|mineur|majeur` (ou `npm version 2.1.0`), puis
 `git push --follow-tags`.
 
-## [2.3.0] – 16/11/2026
+## [2.4.0] – 17/11/2026
+
+### Sessions actives
+- Migration `042_sessions_appareil` : l'appareil (navigateur ou application mobile) est conservé avec chaque session.
+- `GET /profil/sessions`, `DELETE /profil/sessions/:id`, `POST /profil/sessions/fermer-autres` : chacun voit
+  les appareils connectés à son compte et ferme ceux qu'il ne reconnaît pas (jamais la session courante).
+- `DELETE /administration/sessions/:id` : un administrateur ferme une session de n'importe quel compte.
+- La session fermée est refusée dès la requête suivante (« Cette session a été fermée depuis un autre
+  appareil ») et son flux temps réel est coupé aussitôt. Chaque fermeture est inscrite au journal d'audit.
+- L'application mobile est reconnue (« Application mobile MICA ») dans l'historique des connexions.
+
+### État du système
+- `GET /administration/etat-systeme` (administrateurs) : sauvegardes, dernière revue des dépendances,
+  espace disque, base (taille, dernière migration, migrations en attente), comptes, sécurité, sessions
+  actives et liste des points à traiter. Aucune valeur secrète n'est renvoyée.
+- `POST /administration/etat-systeme/revue-dependances` : revue des dépendances à la demande (journalisée).
+
+### Configuration
+- `.env.example` : `CORS_ORIGIN` documentée (en production : `https://indicateur.sonabhy.bf`).
+
+ – 16/11/2026
 
 ### Relance des retardataires
 - `POST /dashboard/saisies/relancer` (droit « Suivi des saisies ») : chaque agent chargé d'une saisie du jour

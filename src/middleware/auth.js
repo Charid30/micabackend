@@ -95,7 +95,7 @@ const authenticate = async (req, res, next) => {
     if (!session.ok) {
       return res.status(401).json(session.code === 'SESSION_INACTIVE'
         ? { code: 'SESSION_INACTIVE', message: 'Session fermée après une période d\'inactivité. Reconnectez-vous.' }
-        : { code: 'SESSION_FERMEE', message: 'Session expirée, veuillez vous reconnecter.' });
+        : { code: 'SESSION_FERMEE', message: session.code === 'SESSION_REVOQUEE' ? 'Cette session a été fermée depuis un autre appareil. Reconnectez-vous.' : 'Session expirée, veuillez vous reconnecter.' });
     }
     req.sid = decoded.sid;
     if (user.suspendu_le) return res.status(401).json({ code: 'COMPTE_SUSPENDU', message: 'Compte suspendu pour raison de sécurité. Contactez l\'administrateur.' });

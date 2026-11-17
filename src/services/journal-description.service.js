@@ -49,6 +49,8 @@ const SAISIES = {
 };
 
 const FIXES = {
+  'POST profil/sessions/fermer-autres': 'Fermeture des sessions ouvertes sur les autres appareils',
+  'POST administration/etat-systeme/revue-dependances': "Revue des dépendances lancée depuis l'état du système",
   'POST dashboard/saisies/relancer': 'Relance des agents dont une saisie du jour n\'est pas faite',
   'PUT auth/change-password': 'Changement de son mot de passe',
   'PUT auth/force-change-password': 'Changement obligatoire de son mot de passe',
@@ -127,7 +129,7 @@ const decrireRdc = (methode, [, pays, objet, id], c) => {
 };
 
 /** Phrase decrivant une requete d'ecriture ; null si elle n'est pas connue (libelle generique a l'affichage) */
-const decrire = async (methode, chemin, corps) => {
+const decrire = async (methode, chemin, corps, auteurId = null) => {
   const c = corps && typeof corps === 'object' ? corps : {};
   const segments = chemin.replace(/^\/api\//, '').replace(/\/$/, '').split('/');
   const [racine, deux, trois, quatre] = segments;
@@ -140,6 +142,16 @@ const decrire = async (methode, chemin, corps) => {
   if (racine === 'administration' && deux === 'sauvegardes' && quatre === 'telecharger') {
     const s = await require('../models').Sauvegarde.findByPk(trois).catch(() => null);
     return `Téléchargement de la sauvegarde ${s?.fichier || `n° ${trois}`}`;
+  }
+
+  // Fermeture d'une session precise (Mon profil ou administrateur) : appareil et compte concernes
+  if ((racine === 'profil' || racine === 'administration') && deux === 'sessions' && id && methode === 'DELETE') {
+    const { Session } = require('../models');
+    const s = await Session.findByPk(id, { include: [{ model: Utilisateur, as: 'utilisateur', attributes: ['username'] }] }).catch(() => null);
+    const app = s ? require('./session.service').appareil(s.navigateur) : null;
+    // Mon profil : l'appareil n'est decrit que si la session appartient bien au demandeur
+    if (racine === 'profil') return `Fermeture d'une de ses sessions${app && s.utilisateur_id === auteurId ? ` (${app}${s.ip ? `, ${s.ip}` : ''})` : ''}`;
+    return `Fermeture d'une session du compte ${s?.utilisateur?.username || `n° ${id}`}${app ? ` (${app})` : ''}`;
   }
 
   if (racine === 'messages') {
